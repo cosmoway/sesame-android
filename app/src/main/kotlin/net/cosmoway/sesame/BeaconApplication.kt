@@ -1,6 +1,9 @@
 package net.cosmoway.sesame
 
 import android.app.Application
+import android.content.Intent
+import org.altbeacon.beacon.BeaconManager
+import org.altbeacon.beacon.BeaconParser
 import org.altbeacon.beacon.Region
 import org.altbeacon.beacon.startup.BootstrapNotifier
 
@@ -13,6 +16,7 @@ import org.altbeacon.beacon.startup.RegionBootstrap
 class BeaconApplication : Application(), BootstrapNotifier {
 
     private var regionBootstrap: RegionBootstrap? = null
+    private var mBeaconManager: BeaconManager? = null
 
     companion object {
 
@@ -21,10 +25,18 @@ class BeaconApplication : Application(), BootstrapNotifier {
 
     override fun onCreate() {
         super.onCreate()
+        mBeaconManager = BeaconManager.getInstanceForApplication(this)
+
+        //Parserの設定
+        val IBEACON_FORMAT: String = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24"
+        mBeaconManager?.beaconParsers?.add(BeaconParser().setBeaconLayout(IBEACON_FORMAT))
     }
 
     override fun didEnterRegion(p0: Region?) {
         // 領域に入場した
+        var intent: Intent = Intent(this, MainActivity::class.java)
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
     }
 
     override fun didExitRegion(p0: Region?) {
