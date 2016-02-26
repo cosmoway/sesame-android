@@ -6,7 +6,7 @@ import android.os.RemoteException
 import android.util.Log
 import org.altbeacon.beacon.*
 
-class MainActivity : AppCompatActivity(), BeaconConsumer, MonitorNotifier {
+class MainActivity : AppCompatActivity(), BeaconConsumer, MonitorNotifier, RangeNotifier {
 
     private var mBeaconManager: BeaconManager? = null
     private var mRegion: Region? = null
@@ -35,6 +35,8 @@ class MainActivity : AppCompatActivity(), BeaconConsumer, MonitorNotifier {
         } catch (e: RemoteException) {
             e.printStackTrace()
         }
+        //Beacon情報の取得
+        mBeaconManager?.setRangeNotifier(this)
     }
 
     override fun onResume() {
@@ -63,5 +65,14 @@ class MainActivity : AppCompatActivity(), BeaconConsumer, MonitorNotifier {
     override fun didDetermineStateForRegion(i: Int, region: Region?) {
         // 領域への入退場のステータス変化を検知
         Log.d("Beacon", "DetermineState: " + i)
+    }
+
+    override fun didRangeBeaconsInRegion(beacons: MutableCollection<Beacon>?, region: Region?) {
+        beacons?.forEach { beacon ->
+            // ログの出力
+            Log.d("Beacon", "UUID:" + beacon.id1 + ", major:" + beacon.id2
+                    + ", minor:" + beacon.id3 + ", Distance:" + beacon.distance + "m"
+                    + ",RSSI" + beacon.rssi)
+        }
     }
 }
