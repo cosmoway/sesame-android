@@ -33,7 +33,7 @@ class BeaconApplication : Application(), BootstrapNotifier {
         mBeaconManager?.beaconParsers?.add(BeaconParser().setBeaconLayout(IBEACON_FORMAT))
 
         // UUID, major, minorの指定はしない
-        var region: Region = Region("uuid-region-bootstrap-001", null, null, null)
+        var region: Region = Region("unique-id-001", null, null, null)
         regionBootstrap = RegionBootstrap(this, region)
     }
 
