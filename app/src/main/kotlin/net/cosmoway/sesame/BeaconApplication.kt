@@ -41,7 +41,7 @@ class BeaconApplication : Application(), BootstrapNotifier {
         // 領域に入場した
         Log.d(TAG, "Enter Region")
         var intent: Intent = Intent(this, MainActivity::class.java)
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
         startActivity(intent)
     }
 
