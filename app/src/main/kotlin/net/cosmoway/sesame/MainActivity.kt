@@ -22,8 +22,19 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
 
 
     }
-    
+
     override fun onBeaconServiceConnect() {
         throw UnsupportedOperationException()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        mBeaconManager?.bind(this) // サービスの開始
+
+    }
+
+    override fun onPause() {
+        super.onPause()
+        mBeaconManager?.unbind(this) // サービスの停止
     }
 }
