@@ -2,10 +2,11 @@ package net.cosmoway.sesame
 
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import org.altbeacon.beacon.BeaconConsumer
 import org.altbeacon.beacon.BeaconManager
 import org.altbeacon.beacon.BeaconParser
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), BeaconConsumer {
 
     private var mBeaconManager: BeaconManager? = null
 
@@ -19,6 +20,10 @@ class MainActivity : AppCompatActivity() {
         val IBEACON_FORMAT: String = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24"
         mBeaconManager?.beaconParsers?.add(BeaconParser().setBeaconLayout(IBEACON_FORMAT))
 
-        
+
+    }
+    
+    override fun onBeaconServiceConnect() {
+        throw UnsupportedOperationException()
     }
 }
