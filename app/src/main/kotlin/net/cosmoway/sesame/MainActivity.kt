@@ -23,6 +23,10 @@ class MainActivity : AppCompatActivity(), BeaconConsumer, MonitorNotifier, Range
 
         //とりあえずbeacon全部認識するように
         mRegion = Region("unique-id-001", null, null, null)
+
+        //暗号化
+        val safetyPassword1: String = PasswordUtil.getSafetyPassword("password", "USERID0001")
+
     }
 
     //Beaconサービスの接続と開始
