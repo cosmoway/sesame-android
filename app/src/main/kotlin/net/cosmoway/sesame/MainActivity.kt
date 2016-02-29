@@ -1,15 +1,35 @@
 package net.cosmoway.sesame
 
-import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.os.RemoteException
+import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import org.altbeacon.beacon.*
+import java.security.MessageDigest
+import java.security.NoSuchAlgorithmException
 
 class MainActivity : AppCompatActivity(), BeaconConsumer, MonitorNotifier, RangeNotifier {
 
     private var mBeaconManager: BeaconManager? = null
     private var mRegion: Region? = null
+
+    private fun toEncryptedHashValue(algorithmName: String, value: String): String {
+        var md: MessageDigest? = null
+        var sb: StringBuilder? = null
+        try {
+            md = MessageDigest.getInstance(algorithmName)
+        } catch (e: NoSuchAlgorithmException) {
+            e.printStackTrace()
+        }
+
+        md!!.update(value.toByteArray())
+        sb = StringBuilder()
+        for (b in md.digest()) {
+            val hex = String.format("%02x", b)
+            sb.append(hex)
+        }
+        return sb.toString()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,7 +45,8 @@ class MainActivity : AppCompatActivity(), BeaconConsumer, MonitorNotifier, Range
         mRegion = Region("unique-id-001", null, null, null)
 
         //暗号化
-        val safetyPassword1: String = PasswordUtil.getSafetyPassword("password", "USERID0001")
+        val safetyPassword1: String = toEncryptedHashValue("SHA-256","hoge")
+        Log.d("id", safetyPassword1)
 
     }
 
