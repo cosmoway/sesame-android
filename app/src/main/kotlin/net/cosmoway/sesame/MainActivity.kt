@@ -42,10 +42,11 @@ class MainActivity : AppCompatActivity(), BeaconConsumer, MonitorNotifier, Range
         mBeaconManager?.beaconParsers?.add(BeaconParser().setBeaconLayout(IBEACON_FORMAT))
 
         //とりあえずbeacon全部認識するように
-        mRegion = Region("unique-id-001", null, null, null)
+        val ID: String = "unique-id-001"
+        mRegion = Region(ID, null, null, null)
 
         //暗号化
-        val safetyPassword1: String = toEncryptedHashValue("SHA-256","hoge")
+        val safetyPassword1: String = toEncryptedHashValue("SHA-256", ID)
         Log.d("id", safetyPassword1)
 
     }
