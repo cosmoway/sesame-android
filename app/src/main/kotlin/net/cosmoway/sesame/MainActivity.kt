@@ -1,8 +1,10 @@
 package net.cosmoway.sesame
 
+import android.content.Context
 import android.os.Bundle
 import android.os.RemoteException
 import android.support.v7.app.AppCompatActivity
+import android.telephony.TelephonyManager
 import android.util.Log
 import org.altbeacon.beacon.*
 import java.security.MessageDigest
@@ -42,11 +44,13 @@ class MainActivity : AppCompatActivity(), BeaconConsumer, MonitorNotifier, Range
         mBeaconManager?.beaconParsers?.add(BeaconParser().setBeaconLayout(IBEACON_FORMAT))
 
         //とりあえずbeacon全部認識するように
-        val ID: String = "unique-id-001"
-        mRegion = Region(ID, null, null, null)
+        val telephonyManager: TelephonyManager = getSystemService(Context.TELEPHONY_SERVICE)
+                as TelephonyManager
+        val id: String = telephonyManager.deviceId
+        mRegion = Region(id, null, null, null)
 
         //暗号化
-        val safetyPassword1: String = toEncryptedHashValue("SHA-256", ID)
+        val safetyPassword1: String = toEncryptedHashValue("SHA-256", id)
         Log.d("id", safetyPassword1)
 
     }

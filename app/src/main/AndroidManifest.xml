@@ -5,6 +5,7 @@
     <!--パーミッション-->
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
     <!--BLE対応機種のみDL可とするよう設定-->
     <uses-feature
