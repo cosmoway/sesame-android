@@ -22,6 +22,8 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     private var mId: String? = null
     // iBeacon領域
     private var mRegion: Region? = null
+    // URL
+    private var mUrl: String? = null
 
     companion object {
         val TAG = org.altbeacon.beacon.service.BeaconService::class.java.simpleName
@@ -29,15 +31,14 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
 
     private fun toEncryptedHashValue(algorithmName: String, value: String): String {
         var md: MessageDigest? = null
-        var sb: StringBuilder? = null
         try {
             md = MessageDigest.getInstance(algorithmName)
         } catch (e: NoSuchAlgorithmException) {
             e.printStackTrace()
         }
 
+        val sb: StringBuilder = StringBuilder()
         md!!.update(value.toByteArray())
-        sb = StringBuilder()
         for (b in md.digest()) {
             val hex = String.format("%02x", b)
             sb.append(hex)
@@ -128,12 +129,15 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     override fun didRangeBeaconsInRegion(beacons: MutableCollection<Beacon>?, region: Region?) {
         beacons?.forEach { beacon ->
             // ログの出力
-            Log.d("Beacon", "UUID:" + beacon.id1 + ", major:" + beacon.id2
-                    + ", minor:" + beacon.id3 + ", Distance:" + beacon.distance + "m"
-                    + ",RSSI" + beacon.rssi)
+            Log.d("Beacon", "UUID:" + beacon.id1 + ", major:" + beacon.id2 + ", minor:" + beacon.id3
+                    + ", Distance:" + beacon.distance + "m" + ", RSSI" + beacon.rssi)
             //暗号化
             val safetyPassword1: String = toEncryptedHashValue("SHA-256", mId + beacon.id2 + beacon.id3)
             Log.d("id", safetyPassword1)
+
+            //URL
+            //mUrl = "http://sesame.local:10080/?data=" + safetyPassword1
+            mUrl = "http://10.0.0.3:10080/"
         }
     }
 
