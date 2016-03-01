@@ -2,11 +2,13 @@ package net.cosmoway.sesame
 
 import android.app.Service
 import android.content.Intent
+import android.os.AsyncTask
 import android.os.IBinder
 import android.os.RemoteException
 import android.util.Log
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import org.altbeacon.beacon.*
 import org.altbeacon.beacon.startup.BootstrapNotifier
 import org.altbeacon.beacon.startup.RegionBootstrap
@@ -49,16 +51,34 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         return sb.toString()
     }
 
-    private val getByOkHttp: String
-        @Throws(IOException::class)
-        get() {
-            val request = Request.Builder().url(mUrl).get().build()
+    private fun getRequest() {
+        object : AsyncTask<Void, Void, String>() {
+            override fun doInBackground(vararg params: Void): String? {
+                var result: String? = null
 
-            val client = OkHttpClient()
+                // リクエストオブジェクトを作って
+                val request = Request.Builder().url(mUrl).get().build()
 
-            val response = client.newCall(request).execute()
-            return response.body().string()
-        }
+                // クライアントオブジェクトを作って
+                val client = OkHttpClient()
+
+                // リクエストして結果を受け取って
+                try {
+                    val response = client.newCall(request).execute()
+                    result = response.body().string()
+                } catch (e: IOException) {
+                    e.printStackTrace()
+                }
+
+                // 返す
+                return result
+            }
+
+            override fun onPostExecute(result: String) {
+                Log.d("Log", result)
+            }
+        }.execute()
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -153,7 +173,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
             //URL
             //mUrl = "http://sesame.local:10080/?data=" + safetyPassword1
             mUrl = "http://10.0.0.3:10080/"
-            getByOkHttp
+            getRequest()
         }
     }
 
