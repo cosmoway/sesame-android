@@ -5,9 +5,12 @@ import android.content.Intent
 import android.os.IBinder
 import android.os.RemoteException
 import android.util.Log
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.altbeacon.beacon.*
 import org.altbeacon.beacon.startup.BootstrapNotifier
 import org.altbeacon.beacon.startup.RegionBootstrap
+import java.io.IOException
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.util.*
@@ -45,6 +48,17 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         }
         return sb.toString()
     }
+
+    private val getByOkHttp: String
+        @Throws(IOException::class)
+        get() {
+            val request = Request.Builder().url(mUrl).get().build()
+
+            val client = OkHttpClient()
+
+            val response = client.newCall(request).execute()
+            return response.body().string()
+        }
 
     override fun onCreate() {
         super.onCreate()
@@ -139,6 +153,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
             //URL
             //mUrl = "http://sesame.local:10080/?data=" + safetyPassword1
             mUrl = "http://10.0.0.3:10080/"
+            getByOkHttp
         }
     }
 
