@@ -92,12 +92,13 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         mBeaconManager?.beaconParsers?.add(BeaconParser().setBeaconLayout(IBEACON_FORMAT))
 
         val sp: SharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
+        // 端末固有識別番号読出
         mId = sp.getString("SaveString", null)
         if (mId == null) {
             Log.d("id", "null")
-            //端末固有識別番号取得
+            // 端末固有識別番号取得
             mId = UUID.randomUUID().toString()
-            //mId = "af7b126c-eace-4954-930e-0a9ffa20c1fb" // For Test
+            // 端末固有識別番号記憶
             sp.edit().putString("SaveString", mId).apply()
         }
         //val identifier: Identifier = Identifier.parse(mId)
@@ -180,7 +181,6 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
 
             //URL
             mUrl = "http://10.0.0.3:10080/?data=" + safetyPassword1
-            //mUrl = "http://10.0.0.3:10080/"
             if (beacon.distance < 1) {
                 getRequest()
             }
