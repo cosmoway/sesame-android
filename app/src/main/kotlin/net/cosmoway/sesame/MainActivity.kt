@@ -11,7 +11,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         // サービスの開始
-        startService(Intent(this@MainActivity, SesameBeaconService::class.java))
+        startService(Intent(this, SesameBeaconService::class.java))
     }
 
     override fun onPause() {
