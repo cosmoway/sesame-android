@@ -2,9 +2,11 @@ package net.cosmoway.sesame
 
 import android.app.Service
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.AsyncTask
 import android.os.IBinder
 import android.os.RemoteException
+import android.preference.PreferenceManager
 import android.util.Log
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -17,7 +19,8 @@ import java.security.NoSuchAlgorithmException
 import java.util.*
 
 // BeaconServiceクラス
-class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeNotifier, MonitorNotifier {
+class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeNotifier,
+        MonitorNotifier {
     // BGで監視するiBeacon領域
     private var mRegionBootstrap: RegionBootstrap? = null
     // iBeacon検知用のマネージャー
@@ -88,9 +91,17 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         val IBEACON_FORMAT: String = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24"
         mBeaconManager?.beaconParsers?.add(BeaconParser().setBeaconLayout(IBEACON_FORMAT))
 
-        //端末固有識別番号取得
-        mId = UUID.randomUUID().toString()
-        val identifier: Identifier = Identifier.parse(mId)
+        val sp: SharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
+        mId = sp.getString("SaveString", null)
+        if (mId == null) {
+            Log.d("id", "null")
+            //端末固有識別番号取得
+            mId = UUID.randomUUID().toString()
+            //mId = "af7b126c-eace-4954-930e-0a9ffa20c1fb" // For Test
+            sp.edit().putString("SaveString", mId).apply()
+        }
+        //val identifier: Identifier = Identifier.parse(mId)
+        Log.d("id", mId)
 
         // Beacon名の作成
         val beaconId = "ando"
