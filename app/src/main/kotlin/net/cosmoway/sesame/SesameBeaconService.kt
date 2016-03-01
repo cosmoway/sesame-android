@@ -96,7 +96,8 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         // Beacon名の作成
         val beaconId = "ando"
         // major, minorの指定はしない
-        mRegion = Region(beaconId, identifier, null, null)
+        //mRegion = Region(beaconId, identifier, null, null)
+        mRegion = Region(beaconId, null, null, null)
         mRegionBootstrap = RegionBootstrap(this, mRegion)
         // iBeacon領域を監視(モニタリング)するスキャン間隔を設定
         mBeaconManager?.setForegroundBetweenScanPeriod(1000)
@@ -173,7 +174,9 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
             //URL
             //mUrl = "http://sesame.local:10080/?data=" + safetyPassword1
             mUrl = "http://10.0.0.3:10080/"
-            getRequest()
+            if (beacon.distance < 0.2) {
+                getRequest()
+            }
         }
     }
 
