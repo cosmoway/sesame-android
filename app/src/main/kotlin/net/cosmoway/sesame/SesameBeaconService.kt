@@ -51,8 +51,8 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     }
 
     private fun getRequest() {
-        object : AsyncTask<Void, Void, String>() {
-            override fun doInBackground(vararg params: Void): String? {
+        object : AsyncTask<Void?, Void?, String?>() {
+            override fun doInBackground(vararg params: Void?): String? {
                 var result: String? = null
 
                 // リクエストオブジェクトを作って
@@ -73,7 +73,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                 return result
             }
 
-            override fun onPostExecute(result: String) {
+            override fun onPostExecute(result: String?) {
                 Log.d("Log", result)
             }
         }.execute()
