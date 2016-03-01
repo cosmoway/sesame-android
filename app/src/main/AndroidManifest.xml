@@ -12,7 +12,6 @@
         android:required="true" />
 
     <application
-        android:name=".BeaconApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -27,6 +26,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <service
+            android:name=".SesameBeaconService"
+            android:enabled="true" />
     </application>
 
 </manifest>
