@@ -3,6 +3,9 @@ package net.cosmoway.sesame
 import android.app.Service
 import android.content.Intent
 import android.content.SharedPreferences
+import android.media.Ringtone
+import android.media.RingtoneManager
+import android.net.Uri
 import android.os.AsyncTask
 import android.os.IBinder
 import android.os.RemoteException
@@ -77,7 +80,12 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
             }
 
             override fun onPostExecute(result: String?) {
-                Log.d("Log", result)
+                if (result == "200 OK") {
+                    Log.d("Log", result)
+                    val uri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+                    val ringtone: Ringtone = RingtoneManager.getRingtone(getApplicationContext(), uri);
+                    ringtone.play()
+                }
             }
         }.execute()
     }
