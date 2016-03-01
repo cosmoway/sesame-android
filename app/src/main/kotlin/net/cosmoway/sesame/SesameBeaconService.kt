@@ -125,8 +125,6 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         } catch (e: RemoteException) {
             e.printStackTrace()
         }
-        //Beacon情報の取得
-        mBeaconManager?.setRangeNotifier(this)
     }
 
     // 領域進入
@@ -144,7 +142,8 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         } catch (e: RemoteException) {
             e.printStackTrace()
         }
-
+        //Beacon情報の取得
+        mBeaconManager?.setRangeNotifier(this)
     }
 
     // 領域退出
@@ -157,23 +156,21 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         } catch (e: RemoteException) {
             e.printStackTrace()
         }
-
     }
 
     override fun didRangeBeaconsInRegion(beacons: MutableCollection<Beacon>?, region: Region?) {
         beacons?.forEach { beacon ->
             // ログの出力
             Log.d("Beacon", "UUID:" + beacon.id1 + ", major:" + beacon.id2 + ", minor:" + beacon.id3
-                    + ", Distance:" + beacon.distance + "m" + ", RSSI" + beacon.rssi)
+                    + ", Distance:" + beacon.distance + "m" + ", RSSI:" + beacon.rssi)
             //暗号化
             val safetyPassword1: String = toEncryptedHashValue("SHA-256", mId + "|"
                     + beacon.id2 + "|" + beacon.id3)
-            Log.d("id", safetyPassword1)
 
             //URL
-            //mUrl = "http://sesame.local:10080/?data=" + safetyPassword1
-            mUrl = "http://10.0.0.3:10080/"
-            if (beacon.distance < 0.2) {
+            mUrl = "http://10.0.0.3:10080/?data=" + safetyPassword1
+            //mUrl = "http://10.0.0.3:10080/"
+            if (beacon.distance < 1) {
                 getRequest()
             }
         }
