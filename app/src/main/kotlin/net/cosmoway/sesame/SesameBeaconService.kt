@@ -226,7 +226,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         beacons?.forEach { beacon ->
             // ログの出力
             Log.d("Beacon", "UUID:" + beacon.id1 + ", major:" + beacon.id2 + ", minor:" + beacon.id3
-                    + ", Distance:" + beacon.distance + "m" + ", RSSI:" + beacon.rssi)
+                    + ", Distance:" + beacon.distance + "m" + ", RSSI:" + beacon.rssi + ", txPower:" + beacon.txPower)
             //暗号化
             val safetyPassword1: String = toEncryptedHashValue("SHA-256", mId + "|"
                     + beacon.id2 + "|" + beacon.id3)
