@@ -71,12 +71,13 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                 try {
                     val response = client.newCall(request).execute()
                     result = response.body().string()
+                    return result
                 } catch (e: IOException) {
                     e.printStackTrace()
                 }
 
                 // 返す
-                return result
+                return null
             }
 
             override fun onPostExecute(result: String?) {
@@ -123,7 +124,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         mBeaconManager?.setBackgroundBetweenScanPeriod(1000)
     }
 
-    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         return super.onStartCommand(intent, flags, startId)
     }
 
@@ -131,7 +132,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         super.onDestroy()
     }
 
-    override fun onBind(intent: Intent): IBinder? {
+    override fun onBind(intent: Intent?): IBinder? {
         return null
     }
 
