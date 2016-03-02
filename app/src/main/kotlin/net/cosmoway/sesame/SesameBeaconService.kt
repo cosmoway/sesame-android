@@ -1,6 +1,10 @@
 package net.cosmoway.sesame
 
+import android.app.Application
+import android.app.Notification
+import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.media.Ringtone
@@ -10,6 +14,8 @@ import android.os.AsyncTask
 import android.os.IBinder
 import android.os.RemoteException
 import android.preference.PreferenceManager
+import android.support.v4.app.NotificationManagerCompat
+import android.support.v7.app.NotificationCompat
 import android.util.Log
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -59,7 +65,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     private fun getRequest() {
         object : AsyncTask<Void?, Void?, String?>() {
             override fun doInBackground(vararg params: Void?): String? {
-                var result: String? = null
+                var result: String
 
                 // リクエストオブジェクトを作って
                 val request = Request.Builder().url(mUrl).get().build()
@@ -74,6 +80,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                     return result
                 } catch (e: IOException) {
                     e.printStackTrace()
+                    Log.d("response", "error")
                 }
 
                 // 返す
@@ -81,11 +88,47 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
             }
 
             override fun onPostExecute(result: String?) {
-                if (result == "200 OK") {
+                if (result != null) {
                     Log.d("Log", result)
-                    val uri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-                    val ringtone: Ringtone = RingtoneManager.getRingtone(getApplicationContext(), uri);
-                    ringtone.play()
+                    if (result == "200 OK") {
+                        val uri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+                        val ringtone: Ringtone = RingtoneManager.getRingtone(applicationContext, uri);
+                        ringtone.play()
+
+                        val builder = NotificationCompat.Builder(applicationContext)
+                        builder.setSmallIcon(R.mipmap.ic_launcher)
+
+                        // メッセージをクリックした時のインテントを作成する
+                        val notificationIntent = Intent(this@SesameBeaconService, Notification::class.java)
+                        val contentIntent = PendingIntent.getActivity(this@SesameBeaconService, 0,
+                                notificationIntent, 0)
+
+                        builder.setContentTitle(result) // 1行目
+                        builder.setContentText("解錠されました。")
+                        builder.setContentIntent(contentIntent)
+                        builder.setTicker("Ticker") // 通知到着時に通知バーに表示(4.4まで)
+                        // 5.0からは表示されない
+
+                        val manager = NotificationManagerCompat.from(applicationContext)
+                        manager.notify(1, builder.build())
+                    } else {
+                        val builder = NotificationCompat.Builder(applicationContext)
+                        builder.setSmallIcon(R.mipmap.ic_launcher)
+
+                        // メッセージをクリックした時のインテントを作成する
+                        val notificationIntent = Intent(this@SesameBeaconService, Notification::class.java)
+                        val contentIntent = PendingIntent.getActivity(this@SesameBeaconService, 0,
+                                notificationIntent, 0)
+
+                        builder.setContentTitle(result) // 1行目
+                        builder.setContentText("この端末は認証されていない可能性がございます。\nシステム管理者にお問合せ下さい。") // 400（403：ネットワークに正常に接続出来ませんでした。）
+                        builder.setContentIntent(contentIntent)
+                        builder.setTicker("Ticker") // 通知到着時に通知バーに表示(4.4まで)
+                        // 5.0からは表示されない
+
+                        val manager = NotificationManagerCompat.from(applicationContext)
+                        manager.notify(1, builder.build())
+                    }
                 }
             }
         }.execute()
