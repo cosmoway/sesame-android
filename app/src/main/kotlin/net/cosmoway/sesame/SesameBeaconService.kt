@@ -1,10 +1,8 @@
 package net.cosmoway.sesame
 
-import android.app.Application
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.media.Ringtone
@@ -19,6 +17,7 @@ import android.support.v7.app.NotificationCompat
 import android.util.Log
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.internal.tls.OkHostnameVerifier
 import org.altbeacon.beacon.*
 import org.altbeacon.beacon.startup.BootstrapNotifier
 import org.altbeacon.beacon.startup.RegionBootstrap
@@ -30,6 +29,7 @@ import java.util.*
 // BeaconServiceクラス
 class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeNotifier,
         MonitorNotifier {
+
     // BGで監視するiBeacon領域
     private var mRegionBootstrap: RegionBootstrap? = null
     // iBeacon検知用のマネージャー
@@ -66,25 +66,23 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         object : AsyncTask<Void?, Void?, String?>() {
             override fun doInBackground(vararg params: Void?): String? {
                 var result: String
-
                 // リクエストオブジェクトを作って
-                val request = Request.Builder().url(mUrl).get().build()
+                val request: Request = Request.Builder().url(mUrl).build()
 
                 // クライアントオブジェクトを作って
-                val client = OkHttpClient()
+                val client: OkHttpClient = OkHttpClient()
 
                 // リクエストして結果を受け取って
                 try {
                     val response = client.newCall(request).execute()
                     result = response.body().string()
-                    return result
                 } catch (e: IOException) {
                     e.printStackTrace()
-                    Log.d("response", "error")
+                    result = "Connection Error"
                 }
 
                 // 返す
-                return null
+                return result
             }
 
             override fun onPostExecute(result: String?) {
@@ -94,23 +92,12 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                         val uri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
                         val ringtone: Ringtone = RingtoneManager.getRingtone(applicationContext, uri);
                         ringtone.play()
-
-                        val builder = NotificationCompat.Builder(applicationContext)
-                        builder.setSmallIcon(R.mipmap.ic_launcher)
-
-                        // メッセージをクリックした時のインテントを作成する
-                        val notificationIntent = Intent(this@SesameBeaconService, Notification::class.java)
-                        val contentIntent = PendingIntent.getActivity(this@SesameBeaconService, 0,
-                                notificationIntent, 0)
-
-                        builder.setContentTitle(result) // 1行目
-                        builder.setContentText("解錠されました。")
-                        builder.setContentIntent(contentIntent)
-                        builder.setTicker("Ticker") // 通知到着時に通知バーに表示(4.4まで)
-                        // 5.0からは表示されない
-
-                        val manager = NotificationManagerCompat.from(applicationContext)
-                        manager.notify(1, builder.build())
+                        try {
+                            // レンジング停止
+                            mBeaconManager?.stopRangingBeaconsInRegion(mRegion)
+                        } catch (e: RemoteException) {
+                            e.printStackTrace()
+                        }
                     } else {
                         val builder = NotificationCompat.Builder(applicationContext)
                         builder.setSmallIcon(R.mipmap.ic_launcher)
@@ -121,9 +108,11 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                                 notificationIntent, 0)
 
                         builder.setContentTitle(result) // 1行目
-                        builder.setContentText("この端末は認証されていない可能性がございます。\nシステム管理者にお問合せ下さい。") // 400（403：ネットワークに正常に接続出来ませんでした。）
-                        builder.setContentIntent(contentIntent)
-                        builder.setTicker("Ticker") // 通知到着時に通知バーに表示(4.4まで)
+                        if (result == "Connection Error") {
+                            builder.setContentText("この端末は認証されていない可能性がございます。\nシステム管理者にお問合せ下さい。")
+                        } else if (result == "400")// 400（403：ネットワークに正常に接続出来ませんでした。）
+                            builder.setContentIntent(contentIntent)
+                        builder.setTicker(this@SesameBeaconService.packageName) // 通知到着時に通知バーに表示(4.4まで)
                         // 5.0からは表示されない
 
                         val manager = NotificationManagerCompat.from(applicationContext)
@@ -132,6 +121,13 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                 }
             }
         }.execute()
+    }
+
+    private fun sendBroadCast(state: Array<String>) {
+        val broadcastIntent: Intent = Intent()
+        broadcastIntent.putExtra("state", state)
+        broadcastIntent.action = "UPDATE_ACTION"
+        baseContext.sendBroadcast(broadcastIntent)
     }
 
     override fun onCreate() {
@@ -157,7 +153,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         Log.d("id", mId)
 
         // Beacon名の作成
-        val beaconId = "ando"
+        val beaconId = this@SesameBeaconService.packageName
         // major, minorの指定はしない
         //mRegion = Region(beaconId, identifier, null, null)
         mRegion = Region(beaconId, null, null, null)
@@ -223,19 +219,35 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     }
 
     override fun didRangeBeaconsInRegion(beacons: MutableCollection<Beacon>?, region: Region?) {
+
+        // 検出したビーコンの情報を全部みる
+        //val lastDistance: Double = Double.MAX_VALUE;
+        //var nearBeacon: Beacon? = null
+
         beacons?.forEach { beacon ->
+            /*if (lastDistance > beacon.distance) {
+                nearBeacon = beacon;
+            }*/
+
             // ログの出力
             Log.d("Beacon", "UUID:" + beacon.id1 + ", major:" + beacon.id2 + ", minor:" + beacon.id3
-                    + ", Distance:" + beacon.distance + "m" + ", RSSI:" + beacon.rssi + ", txPower:" + beacon.txPower)
+                    + ", Distance:" + beacon.distance + "m"
+                    + ", RSSI:" + beacon.rssi + ", txPower:" + beacon.txPower)
+
+
             //暗号化
             val safetyPassword1: String = toEncryptedHashValue("SHA-256", mId + "|"
                     + beacon.id2 + "|" + beacon.id3)
-
             //URL
-            mUrl = "http://10.0.0.3:10080/?data=" + safetyPassword1
-            if (beacon.distance < 1) {
+            //mUrl = "http://10.0.0.3:10080/?data=" + safetyPassword1
+            mUrl = "http://sesame.local:10080/?data=" + safetyPassword1
+            //mUrl = "http://10.0.0.44:10080/?data=" + safetyPassword1
+            if (beacon.distance < 3.0) {
                 getRequest()
             }
+            val list: Array<String> = arrayOf(beacon.id1.toString(), beacon.id2.toString(), beacon.id3.toString(),
+                    beacon.distance.toString(), beacon.rssi.toString(), beacon.txPower.toString(), mUrl.toString())
+            sendBroadCast(list)
         }
     }
 
