@@ -245,7 +245,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
             //URL
             //mUrl = "http://10.0.0.3:10080/?data=" + safetyPassword1
             //mUrl = "http://sesame.local:10080/?data=" + safetyPassword1
-            mUrl = "http://10.0.0.44:10080/?data=" + safetyPassword1
+            mUrl = "http://10.0.0.49:10080/?data=" + safetyPassword1
             if (beacon.distance < 3.0) {
                 getRequest()
             }
