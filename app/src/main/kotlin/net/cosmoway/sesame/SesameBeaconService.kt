@@ -4,20 +4,22 @@ import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
+import android.net.wifi.WifiManager
 import android.os.AsyncTask
 import android.os.IBinder
 import android.os.RemoteException
+import android.os.StrictMode
 import android.preference.PreferenceManager
 import android.support.v4.app.NotificationManagerCompat
 import android.support.v7.app.NotificationCompat
 import android.util.Log
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.internal.tls.OkHostnameVerifier
 import org.altbeacon.beacon.*
 import org.altbeacon.beacon.startup.BootstrapNotifier
 import org.altbeacon.beacon.startup.RegionBootstrap
@@ -25,6 +27,9 @@ import java.io.IOException
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.util.*
+import javax.jmdns.JmDNS
+import javax.jmdns.ServiceEvent
+import javax.jmdns.ServiceListener
 
 // BeaconServiceクラス
 class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeNotifier,
@@ -43,6 +48,9 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
 
     companion object {
         val TAG = org.altbeacon.beacon.service.BeaconService::class.java.simpleName
+        val DNS_TYPE = "_irkit._tcp";
+        val intentFilter: IntentFilter = IntentFilter()
+        var jmdns: JmDNS? = null
     }
 
     private fun toEncryptedHashValue(algorithmName: String, value: String): String {
@@ -63,11 +71,11 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     }
 
     private fun getRequest() {
-        object : AsyncTask<Void?, Void?, String?>() {
+        /*object : AsyncTask<Void?, Void?, String?>() {
             override fun doInBackground(vararg params: Void?): String? {
                 var result: String
                 // リクエストオブジェクトを作って
-                val request: Request = Request.Builder().url(mUrl).build()
+                val request: Request = Request.Builder().url(mUrl).get().head().build()
 
                 // クライアントオブジェクトを作って
                 val client: OkHttpClient = OkHttpClient()
@@ -102,11 +110,47 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                     makeNotification(result)
                 }
             }
-        }.execute()
+        }.execute()*/
+    }
+
+    private fun createJmDns() {
+        // マルチキャストアドレス宛てパケットを受け取る
+        val wifiManager: WifiManager = getSystemService(android.content.Context.WIFI_SERVICE)
+                as WifiManager;
+        // デバッグのためのタグを付加する
+        val multiCastLock: WifiManager.MulticastLock = wifiManager.createMulticastLock("for JmDNS");
+        multiCastLock.setReferenceCounted(true);
+        multiCastLock.acquire();
+        if (android.os.Build.VERSION.SDK_INT > 9) {
+            val policy: StrictMode.ThreadPolicy = StrictMode.ThreadPolicy.Builder().permitAll().build();
+            StrictMode.setThreadPolicy(policy);
+        }
+        try {
+            jmdns = JmDNS.create()
+        } catch (e: IOException) {
+            e.printStackTrace()
+            Log.d(TAG, "JmDnsError")
+        }
+
+        jmdns?.addServiceListener("_http._tcp.local.", object : ServiceListener {
+            override fun serviceAdded(event: ServiceEvent) {
+                Log.d(TAG, "Service added   : " + event.name + "." + event.type)
+                jmdns?.requestServiceInfo(event.type, event.name)
+            }
+
+            override fun serviceRemoved(event: ServiceEvent) {
+                Log.d(TAG, "Service removed : " + event.name + "." + event.type)
+            }
+
+            override fun serviceResolved(event: ServiceEvent) {
+                Log.d(TAG, "Service resolved: " + event.info)
+            }
+        })
     }
 
     private fun makeNotification(result: String) {
-        val builder = NotificationCompat.Builder(applicationContext)
+
+        /*val builder = NotificationCompat.Builder(applicationContext)
         builder.setSmallIcon(R.mipmap.ic_launcher)
 
         // メッセージをクリックした時のインテントを作成する
@@ -129,7 +173,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         // 5.0からは表示されない
 
         val manager = NotificationManagerCompat.from(applicationContext)
-        manager.notify(1, builder.build())
+        manager.notify(1, builder.build())*/
 
     }
 
@@ -159,7 +203,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
             // 端末固有識別番号記憶
             sp.edit().putString("SaveString", mId).apply()
         }
-        //val identifier: Identifier = Identifier.parse(mId)
+        //val identifier: Identifier = Identifier.parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
         Log.d("id", mId)
 
         // Beacon名の作成
@@ -171,6 +215,12 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         // iBeacon領域を監視(モニタリング)するスキャン間隔を設定
         mBeaconManager?.setForegroundScanPeriod(1000)
         mBeaconManager?.setBackgroundScanPeriod(1000)
+
+        // Set DNS results to be cached.
+        java.security.Security.setProperty("networkaddress.cache.ttl", "1")
+        // Do not cache un-successful name lookups from the DNS.
+        java.security.Security.setProperty("networkaddress.cache.negative.ttl", "1")
+        createJmDns()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -246,17 +296,17 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
 
 
             //暗号化
-            val safetyPassword1: String = toEncryptedHashValue("SHA-256", mId + "|"
-                    + beacon.id2 + "|" + beacon.id3)
+            //val safetyPassword1: String = toEncryptedHashValue("SHA-256", mId + "|"
+            //        + beacon.id2 + "|" + beacon.id3)
             //URL
             //mUrl = "http://10.0.0.3:10080/?data=" + safetyPassword1
             //mUrl = "http://sesame.local:10080/?data=" + safetyPassword1
-            mUrl = "http://10.0.0.44:10080/?data=" + safetyPassword1
+            //mUrl = "http://10.0.0.44:10080/?data=" + safetyPassword1
             if (beacon.distance < 3.0) {
-                getRequest()
+                //getRequest()
             }
             val list: Array<String> = arrayOf(beacon.id1.toString(), beacon.id2.toString(), beacon.id3.toString(),
-                    beacon.distance.toString(), beacon.rssi.toString(), beacon.txPower.toString(), mUrl.toString())
+                    beacon.distance.toString(), beacon.rssi.toString(), beacon.txPower.toString()/*, mUrl.toString()*/)
             sendBroadCast(list)
         }
     }
