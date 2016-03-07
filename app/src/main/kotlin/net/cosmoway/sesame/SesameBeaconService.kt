@@ -169,8 +169,8 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         mRegion = Region(beaconId, null, null, null)
         mRegionBootstrap = RegionBootstrap(this, mRegion)
         // iBeacon領域を監視(モニタリング)するスキャン間隔を設定
-        mBeaconManager?.setForegroundBetweenScanPeriod(1000)
-        mBeaconManager?.setBackgroundBetweenScanPeriod(1000)
+        mBeaconManager?.setForegroundScanPeriod(1000)
+        mBeaconManager?.setBackgroundScanPeriod(1000)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -231,12 +231,12 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     override fun didRangeBeaconsInRegion(beacons: MutableCollection<Beacon>?, region: Region?) {
 
         // 検出したビーコンの情報を全部みる
-        //val lastDistance: Double = Double.MAX_VALUE;
+        //val lastDistance: Double = Double.MAX_VALUE
         //var nearBeacon: Beacon? = null
 
         beacons?.forEach { beacon ->
             /*if (lastDistance > beacon.distance) {
-                nearBeacon = beacon;
+                nearBeacon = beacon
             }*/
 
             // ログの出力
