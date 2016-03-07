@@ -110,9 +110,9 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                         builder.setContentTitle(result) // 1行目
                         if (result == "Connection Error") {
                             builder.setContentText("通信処理が正常に終了されませんでした。\n通信環境を御確認下さい。")
-                        } else if (result.equals("400")) {
+                        } else if (result.indexOf("400") != -1) {
                             builder.setContentText("予期せぬエラーが発生致しました。\n開発者に御問合せ下さい。")
-                        } else if (result.equals("403")) {
+                        } else if (result.indexOf("403") != -1) {
                             builder.setContentText("認証に失敗致しました。\nシステム管理者に登録を御確認下さい。")
                         }// 400（403：ネットワークに正常に接続出来ませんでした。）
                         builder.setContentIntent(contentIntent)
