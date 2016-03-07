@@ -89,8 +89,8 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                 if (result != null) {
                     Log.d("Log", result)
                     if (result == "200 OK") {
-                        val uri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-                        val ringtone: Ringtone = RingtoneManager.getRingtone(applicationContext, uri);
+                        val uri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                        val ringtone: Ringtone = RingtoneManager.getRingtone(applicationContext, uri)
                         ringtone.play()
                         try {
                             // レンジング停止
@@ -98,33 +98,39 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                         } catch (e: RemoteException) {
                             e.printStackTrace()
                         }
-                    } else {
-                        val builder = NotificationCompat.Builder(applicationContext)
-                        builder.setSmallIcon(R.mipmap.ic_launcher)
-
-                        // メッセージをクリックした時のインテントを作成する
-                        val notificationIntent = Intent(this@SesameBeaconService, Notification::class.java)
-                        val contentIntent = PendingIntent.getActivity(this@SesameBeaconService, 0,
-                                notificationIntent, 0)
-
-                        builder.setContentTitle(result) // 1行目
-                        if (result == "Connection Error") {
-                            builder.setContentText("通信処理が正常に終了されませんでした。\n通信環境を御確認下さい。")
-                        } else if (result.indexOf("400") != -1) {
-                            builder.setContentText("予期せぬエラーが発生致しました。\n開発者に御問合せ下さい。")
-                        } else if (result.indexOf("403") != -1) {
-                            builder.setContentText("認証に失敗致しました。\nシステム管理者に登録を御確認下さい。")
-                        }// 400（403：ネットワークに正常に接続出来ませんでした。）
-                        builder.setContentIntent(contentIntent)
-                        builder.setTicker(this@SesameBeaconService.packageName) // 通知到着時に通知バーに表示(4.4まで)
-                        // 5.0からは表示されない
-
-                        val manager = NotificationManagerCompat.from(applicationContext)
-                        manager.notify(1, builder.build())
                     }
+                    makeNotification(result)
                 }
             }
         }.execute()
+    }
+
+    private fun makeNotification(result: String) {
+        val builder = NotificationCompat.Builder(applicationContext)
+        builder.setSmallIcon(R.mipmap.ic_launcher)
+
+        // メッセージをクリックした時のインテントを作成する
+        val notificationIntent = Intent(this@SesameBeaconService, Notification::class.java)
+        val contentIntent = PendingIntent.getActivity(this@SesameBeaconService, 0,
+                notificationIntent, 0)
+
+        builder.setContentTitle(result) // 1行目
+        if (result == "200 OK") {
+            builder.setContentText("正常に解錠されました。")
+        } else if (result == "Connection Error") {
+            builder.setContentText("通信処理が正常に終了されませんでした。\n通信環境を御確認下さい。")
+        } else if (result.indexOf("400") != -1) {
+            builder.setContentText("予期せぬエラーが発生致しました。\n開発者に御問合せ下さい。")
+        } else if (result.indexOf("403") != -1) {
+            builder.setContentText("認証に失敗致しました。\nシステム管理者に登録を御確認下さい。")
+        }
+        builder.setContentIntent(contentIntent)
+        builder.setTicker("Sesame") // 通知到着時に通知バーに表示(4.4まで)
+        // 5.0からは表示されない
+
+        val manager = NotificationManagerCompat.from(applicationContext)
+        manager.notify(1, builder.build())
+
     }
 
     private fun sendBroadCast(state: Array<String>) {

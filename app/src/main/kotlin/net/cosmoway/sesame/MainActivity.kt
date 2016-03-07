@@ -88,9 +88,9 @@ class MainActivity : ListActivity() {
         mReceiver = SesameBroadcastReceiver()
         mIntentFilter = IntentFilter()
         (mIntentFilter as IntentFilter).addAction("UPDATE_ACTION")
-        registerReceiver(mReceiver, mIntentFilter);
+        registerReceiver(mReceiver, mIntentFilter)
 
-        (mReceiver as SesameBroadcastReceiver).registerHandler(updateHandler);
+        (mReceiver as SesameBroadcastReceiver).registerHandler(updateHandler)
     }
 
     override fun onStop() {
@@ -101,24 +101,5 @@ class MainActivity : ListActivity() {
     override fun onResume() {
         super.onResume()
         window.addFlags(FLAG_KEYGUARD)
-    }
-
-    fun notification(result: String) {
-        val builder = NotificationCompat.Builder(applicationContext)
-        builder.setSmallIcon(R.mipmap.ic_launcher)
-
-        // メッセージをクリックした時のインテントを作成する
-        val notificationIntent = Intent(this, Notification::class.java)
-        val contentIntent = PendingIntent.getActivity(this, 0,
-                notificationIntent, 0)
-
-        builder.setContentTitle(result) // 1行目
-        builder.setContentText("解錠されました。")
-        builder.setContentIntent(contentIntent)
-        builder.setTicker("Ticker") // 通知到着時に通知バーに表示(4.4まで)
-        // 5.0からは表示されない
-
-        val manager = NotificationManagerCompat.from(applicationContext)
-        manager.notify(1, builder.build())
     }
 }
