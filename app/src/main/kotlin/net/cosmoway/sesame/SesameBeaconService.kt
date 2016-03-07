@@ -109,9 +109,13 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
 
                         builder.setContentTitle(result) // 1行目
                         if (result == "Connection Error") {
-                            builder.setContentText("この端末は認証されていない可能性がございます。\nシステム管理者にお問合せ下さい。")
-                        } else if (result == "400")// 400（403：ネットワークに正常に接続出来ませんでした。）
-                            builder.setContentIntent(contentIntent)
+                            builder.setContentText("通信処理が正常に終了されませんでした。\n通信環境を御確認下さい。")
+                        } else if (result.equals("400")) {
+                            builder.setContentText("予期せぬエラーが発生致しました。\n開発者に御問合せ下さい。")
+                        } else if (result.equals("403")) {
+                            builder.setContentText("認証に失敗致しました。\nシステム管理者に登録を御確認下さい。")
+                        }// 400（403：ネットワークに正常に接続出来ませんでした。）
+                        builder.setContentIntent(contentIntent)
                         builder.setTicker(this@SesameBeaconService.packageName) // 通知到着時に通知バーに表示(4.4まで)
                         // 5.0からは表示されない
 
@@ -240,8 +244,8 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                     + beacon.id2 + "|" + beacon.id3)
             //URL
             //mUrl = "http://10.0.0.3:10080/?data=" + safetyPassword1
-            mUrl = "http://sesame.local:10080/?data=" + safetyPassword1
-            //mUrl = "http://10.0.0.44:10080/?data=" + safetyPassword1
+            //mUrl = "http://sesame.local:10080/?data=" + safetyPassword1
+            mUrl = "http://10.0.0.44:10080/?data=" + safetyPassword1
             if (beacon.distance < 3.0) {
                 getRequest()
             }
