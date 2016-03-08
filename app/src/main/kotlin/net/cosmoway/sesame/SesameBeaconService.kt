@@ -9,6 +9,7 @@ import android.content.SharedPreferences
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
+import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.AsyncTask
 import android.os.IBinder
@@ -24,12 +25,14 @@ import org.altbeacon.beacon.*
 import org.altbeacon.beacon.startup.BootstrapNotifier
 import org.altbeacon.beacon.startup.RegionBootstrap
 import java.io.IOException
+import java.net.Inet4Address
+import java.net.InetAddress
+import java.net.InetAddress.getAllByName
+import java.net.UnknownHostException
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.util.*
-import javax.jmdns.JmDNS
-import javax.jmdns.ServiceEvent
-import javax.jmdns.ServiceListener
+import javax.jmdns.*
 
 // BeaconServiceクラス
 class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeNotifier,
@@ -48,7 +51,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
 
     companion object {
         val TAG = org.altbeacon.beacon.service.BeaconService::class.java.simpleName
-        val DNS_TYPE = "_irkit._tcp";
+        val DNS_TYPE = "_irkit._tcp"
         val intentFilter: IntentFilter = IntentFilter()
         var jmdns: JmDNS? = null
     }
@@ -116,26 +119,27 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     private fun createJmDns() {
         // マルチキャストアドレス宛てパケットを受け取る
         val wifiManager: WifiManager = getSystemService(android.content.Context.WIFI_SERVICE)
-                as WifiManager;
+                as WifiManager
         // デバッグのためのタグを付加する
-        val multiCastLock: WifiManager.MulticastLock = wifiManager.createMulticastLock("for JmDNS");
-        multiCastLock.setReferenceCounted(true);
-        multiCastLock.acquire();
+        val multiCastLock: WifiManager.MulticastLock = wifiManager.createMulticastLock("for JmDNS")
+        multiCastLock.setReferenceCounted(true)
+        multiCastLock.acquire()
         if (android.os.Build.VERSION.SDK_INT > 9) {
-            val policy: StrictMode.ThreadPolicy = StrictMode.ThreadPolicy.Builder().permitAll().build();
-            StrictMode.setThreadPolicy(policy);
+            val policy: StrictMode.ThreadPolicy = StrictMode.ThreadPolicy.Builder().permitAll().build()
+            StrictMode.setThreadPolicy(policy)
         }
         try {
             jmdns = JmDNS.create()
         } catch (e: IOException) {
             e.printStackTrace()
-            Log.d(TAG, "JmDnsError")
+            Log.e(TAG, "JmDnsError")
         }
 
         jmdns?.addServiceListener("_http._tcp.local.", object : ServiceListener {
             override fun serviceAdded(event: ServiceEvent) {
-                Log.d(TAG, "Service added   : " + event.name + "." + event.type)
                 jmdns?.requestServiceInfo(event.type, event.name)
+                Log.d(TAG, "Service added   : " + event.name + "." + event.type)
+                //InetAddress.getAllByName("sesame.local")
             }
 
             override fun serviceRemoved(event: ServiceEvent) {
@@ -143,9 +147,33 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
             }
 
             override fun serviceResolved(event: ServiceEvent) {
-                Log.d(TAG, "Service resolved: " + event.info)
+                val info: ServiceInfo = event.info
+                // ipv4アドレスの取得
+                val addresses: Array<Inet4Address> = info.inet4Addresses
+                Log.d(TAG, "Service resolved: " + info)
+                //Log.d(TAG, "Service resolved: " + event.info)
+                Log.d(TAG, "Service resolved: " + Arrays.toString(addresses))
             }
         })
+        jmdns?.addServiceTypeListener(object : ServiceTypeListener {
+
+            override fun serviceTypeAdded(event: ServiceEvent?) {
+                Log.d(TAG, "ServiceType added : " + event?.type)
+            }
+
+            override fun subTypeForServiceTypeAdded(event: ServiceEvent?) {
+                //Log.d(TAG, "Service added : " + event?.type + "," + event?.info)
+            }
+        })
+        /*var host: InetAddress? = null
+        try {
+            host = InetAddress.getByName("sesame.local")
+            Log.d(TAG, "Host name = " + host?.hostName)
+            Log.d(TAG, "IP = " + host?.hostAddress)
+        } catch (e: UnknownHostException) {
+            Log.d(TAG, "Not found " + "sesame.local")
+            return
+        }*/
     }
 
     private fun makeNotification(result: String) {
