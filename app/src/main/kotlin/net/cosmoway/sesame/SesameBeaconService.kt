@@ -3,18 +3,17 @@ package net.cosmoway.sesame
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
-import android.net.wifi.WifiInfo
-import android.net.wifi.WifiManager
+import android.net.nsd.NsdManager
+import android.net.nsd.NsdServiceInfo
 import android.os.AsyncTask
 import android.os.IBinder
 import android.os.RemoteException
-import android.os.StrictMode
 import android.preference.PreferenceManager
 import android.support.v4.app.NotificationManagerCompat
 import android.support.v7.app.NotificationCompat
@@ -25,18 +24,13 @@ import org.altbeacon.beacon.*
 import org.altbeacon.beacon.startup.BootstrapNotifier
 import org.altbeacon.beacon.startup.RegionBootstrap
 import java.io.IOException
-import java.net.Inet4Address
-import java.net.InetAddress
-import java.net.InetAddress.getAllByName
-import java.net.UnknownHostException
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.util.*
-import javax.jmdns.*
 
 // BeaconServiceクラス
 class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeNotifier,
-        MonitorNotifier {
+        MonitorNotifier, NsdManager.DiscoveryListener, NsdManager.ResolveListener {
 
     // BGで監視するiBeacon領域
     private var mRegionBootstrap: RegionBootstrap? = null
@@ -46,14 +40,19 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     private var mId: String? = null
     // iBeacon領域
     private var mRegion: Region? = null
-    // URL
-    private var mUrl: String? = null
+    private var mHost: String? = null
+    // Nsd Manager
+    private var nsdManager: NsdManager? = null
+    private var discoveryStarted: Boolean = false
+    // Flag of Unlock
+    private var isUnlocked: Boolean = false
+
 
     companion object {
-        val TAG = org.altbeacon.beacon.service.BeaconService::class.java.simpleName
-        val DNS_TYPE = "_irkit._tcp"
-        val intentFilter: IntentFilter = IntentFilter()
-        var jmdns: JmDNS? = null
+        val TAG_BEACON = org.altbeacon.beacon.service.BeaconService::class.java.simpleName
+        val TAG_NSD = "NSD"
+        val SERVICE_TYPE = "_xdk-app-daemon._tcp."
+        val MY_SERVICE_NAME = "sesame"
     }
 
     private fun toEncryptedHashValue(algorithmName: String, value: String): String {
@@ -73,12 +72,12 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         return sb.toString()
     }
 
-    private fun getRequest() {
-        /*object : AsyncTask<Void?, Void?, String?>() {
+    private fun getRequest(url: String) {
+        object : AsyncTask<Void?, Void?, String?>() {
             override fun doInBackground(vararg params: Void?): String? {
                 var result: String
                 // リクエストオブジェクトを作って
-                val request: Request = Request.Builder().url(mUrl).get().head().build()
+                val request: Request = Request.Builder().url(url).get().head().build()
 
                 // クライアントオブジェクトを作って
                 val client: OkHttpClient = OkHttpClient()
@@ -113,72 +112,12 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                     makeNotification(result)
                 }
             }
-        }.execute()*/
-    }
-
-    private fun createJmDns() {
-        // マルチキャストアドレス宛てパケットを受け取る
-        val wifiManager: WifiManager = getSystemService(android.content.Context.WIFI_SERVICE)
-                as WifiManager
-        // デバッグのためのタグを付加する
-        val multiCastLock: WifiManager.MulticastLock = wifiManager.createMulticastLock("for JmDNS")
-        multiCastLock.setReferenceCounted(true)
-        multiCastLock.acquire()
-        if (android.os.Build.VERSION.SDK_INT > 9) {
-            val policy: StrictMode.ThreadPolicy = StrictMode.ThreadPolicy.Builder().permitAll().build()
-            StrictMode.setThreadPolicy(policy)
-        }
-        try {
-            jmdns = JmDNS.create()
-        } catch (e: IOException) {
-            e.printStackTrace()
-            Log.e(TAG, "JmDnsError")
-        }
-
-        jmdns?.addServiceListener("_http._tcp.local.", object : ServiceListener {
-            override fun serviceAdded(event: ServiceEvent) {
-                jmdns?.requestServiceInfo(event.type, event.name)
-                Log.d(TAG, "Service added   : " + event.name + "." + event.type)
-                //InetAddress.getAllByName("sesame.local")
-            }
-
-            override fun serviceRemoved(event: ServiceEvent) {
-                Log.d(TAG, "Service removed : " + event.name + "." + event.type)
-            }
-
-            override fun serviceResolved(event: ServiceEvent) {
-                val info: ServiceInfo = event.info
-                // ipv4アドレスの取得
-                val addresses: Array<Inet4Address> = info.inet4Addresses
-                Log.d(TAG, "Service resolved: " + info)
-                //Log.d(TAG, "Service resolved: " + event.info)
-                Log.d(TAG, "Service resolved: " + Arrays.toString(addresses))
-            }
-        })
-        jmdns?.addServiceTypeListener(object : ServiceTypeListener {
-
-            override fun serviceTypeAdded(event: ServiceEvent?) {
-                Log.d(TAG, "ServiceType added : " + event?.type)
-            }
-
-            override fun subTypeForServiceTypeAdded(event: ServiceEvent?) {
-                //Log.d(TAG, "Service added : " + event?.type + "," + event?.info)
-            }
-        })
-        /*var host: InetAddress? = null
-        try {
-            host = InetAddress.getByName("sesame.local")
-            Log.d(TAG, "Host name = " + host?.hostName)
-            Log.d(TAG, "IP = " + host?.hostAddress)
-        } catch (e: UnknownHostException) {
-            Log.d(TAG, "Not found " + "sesame.local")
-            return
-        }*/
+        }.execute()
     }
 
     private fun makeNotification(result: String) {
 
-        /*val builder = NotificationCompat.Builder(applicationContext)
+        val builder = NotificationCompat.Builder(applicationContext)
         builder.setSmallIcon(R.mipmap.ic_launcher)
 
         // メッセージをクリックした時のインテントを作成する
@@ -201,8 +140,63 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         // 5.0からは表示されない
 
         val manager = NotificationManagerCompat.from(applicationContext)
-        manager.notify(1, builder.build())*/
+        manager.notify(1, builder.build())
 
+    }
+
+    fun ensureSystemServices() {
+        nsdManager = getSystemService(Context.NSD_SERVICE) as NsdManager
+        /*if (nsdManager == null) {
+            return
+        }*/
+    }
+
+    private fun startDiscovery() {
+        nsdManager?.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, this)
+    }
+
+    private fun stopDiscovery() {
+        if (discoveryStarted)
+            nsdManager?.stopServiceDiscovery(this)
+    }
+
+    override fun onServiceFound(serviceInfo: NsdServiceInfo) {
+        Log.i(TAG_NSD, java.lang.String.format("Service found serviceInfo=%s", serviceInfo))
+        nsdManager?.resolveService(serviceInfo, this)
+    }
+
+    override fun onDiscoveryStarted(serviceType: String) {
+        discoveryStarted = true
+        Log.i(TAG_NSD, String.format("Discovery started serviceType=%s", serviceType))
+    }
+
+    override fun onDiscoveryStopped(serviceType: String) {
+        discoveryStarted = false
+        Log.i(TAG_NSD, String.format("Discovery stopped serviceType=%s", serviceType))
+    }
+
+    override fun onServiceLost(serviceInfo: NsdServiceInfo) {
+        Log.i(TAG_NSD, String.format("Service lost serviceInfo=%s", serviceInfo))
+    }
+
+    override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
+        Log.w(TAG_NSD, String.format("Failed to start discovery serviceType=%s, errorCode=%d", serviceType, errorCode))
+    }
+
+    override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {
+        Log.w(TAG_NSD, String.format("Failed to stop discovery serviceType=%s, errorCode=%d", serviceType, errorCode))
+    }
+
+    override fun onServiceResolved(serviceInfo: NsdServiceInfo) {
+        Log.i(TAG_NSD, String.format("Service resolved serviceInfo=%s", serviceInfo.host))
+        if (serviceInfo.serviceName == MY_SERVICE_NAME) {
+            mHost = serviceInfo.host.toString()
+            stopDiscovery()
+        }
+    }
+
+    override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
+        Log.w(TAG_NSD, String.format("Failed to resolve serviceInfo=%s, errorCode=%d", serviceInfo, errorCode))
     }
 
     private fun sendBroadCast(state: Array<String>) {
@@ -240,23 +234,20 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         //mRegion = Region(beaconId, identifier, null, null)
         mRegion = Region(beaconId, null, null, null)
         mRegionBootstrap = RegionBootstrap(this, mRegion)
-        // iBeacon領域を監視(モニタリング)するスキャン間隔を設定
-        mBeaconManager?.setForegroundScanPeriod(1000)
-        mBeaconManager?.setBackgroundScanPeriod(1000)
+        // BGでiBeacon領域を監視(モニタリング)するスキャン間隔を設定
+        mBeaconManager?.setBackgroundBetweenScanPeriod(1000);
 
-        // Set DNS results to be cached.
-        java.security.Security.setProperty("networkaddress.cache.ttl", "1")
-        // Do not cache un-successful name lookups from the DNS.
-        java.security.Security.setProperty("networkaddress.cache.negative.ttl", "1")
-        createJmDns()
+        ensureSystemServices()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        startDiscovery()
         return super.onStartCommand(intent, flags, startId)
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        stopDiscovery()
     }
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -277,7 +268,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
 
     // 領域進入
     override fun didEnterRegion(region: Region) {
-        Log.d(TAG, "Enter Region")
+        Log.d(TAG_BEACON, "Enter Region")
 
         // アプリをFG起動させる
         val intent = Intent(this, MainActivity::class.java)
@@ -285,18 +276,20 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         startActivity(intent)
 
         // レンジング開始
-        try {
-            mBeaconManager?.startRangingBeaconsInRegion(region)
-        } catch (e: RemoteException) {
-            e.printStackTrace()
+        if (!isUnlocked) {
+            try {
+                mBeaconManager?.startRangingBeaconsInRegion(region)
+            } catch (e: RemoteException) {
+                e.printStackTrace()
+            }
+            //Beacon情報の取得
+            mBeaconManager?.setRangeNotifier(this)
         }
-        //Beacon情報の取得
-        mBeaconManager?.setRangeNotifier(this)
     }
 
     // 領域退出
     override fun didExitRegion(region: Region) {
-        Log.d(TAG, "Exit Region")
+        Log.d(TAG_BEACON, "Exit Region")
 
         // レンジング停止
         try {
@@ -324,23 +317,22 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
 
 
             //暗号化
-            //val safetyPassword1: String = toEncryptedHashValue("SHA-256", mId + "|"
-            //        + beacon.id2 + "|" + beacon.id3)
+            val safetyPassword1: String = toEncryptedHashValue("SHA-256", mId + "|"
+                    + beacon.id2 + "|" + beacon.id3)
             //URL
-            //mUrl = "http://10.0.0.3:10080/?data=" + safetyPassword1
-            //mUrl = "http://sesame.local:10080/?data=" + safetyPassword1
-            //mUrl = "http://10.0.0.44:10080/?data=" + safetyPassword1
-            if (beacon.distance < 3.0) {
-                //getRequest()
+            val url: String = "http:/$mHost:10080/?data=$safetyPassword1"
+            Log.d(TAG_BEACON, url)
+            if (beacon.distance < 10.0) {
+                getRequest(url) //ビーコン領域進入したら
             }
             val list: Array<String> = arrayOf(beacon.id1.toString(), beacon.id2.toString(), beacon.id3.toString(),
-                    beacon.distance.toString(), beacon.rssi.toString(), beacon.txPower.toString()/*, mUrl.toString()*/)
+                    beacon.distance.toString(), beacon.rssi.toString(), beacon.txPower.toString(), url.toString())
             sendBroadCast(list)
         }
     }
 
     // 領域に対する状態が変化
     override fun didDetermineStateForRegion(i: Int, region: Region) {
-        Log.d(TAG, "Determine State: " + i)
+        Log.d(TAG_BEACON, "Determine State: " + i)
     }
 }
