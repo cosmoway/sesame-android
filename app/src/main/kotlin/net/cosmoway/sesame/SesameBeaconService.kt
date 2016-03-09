@@ -242,7 +242,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startDiscovery()
-        return super.onStartCommand(intent, flags, startId)
+        return START_STICKY
     }
 
     override fun onDestroy() {

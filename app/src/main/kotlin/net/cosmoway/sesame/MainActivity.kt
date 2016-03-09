@@ -30,7 +30,6 @@ class MainActivity : ListActivity() {
     private val FLAG_KEYGUARD = WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
     private var mReceiver: SesameBroadcastReceiver? = null
     private var mIntentFilter: IntentFilter? = null
-    private var mMessage: TextView? = null
 
     // サービスから値を受け取ったら動かしたい内容を書く
     private val updateHandler = object : Handler() {
@@ -101,5 +100,6 @@ class MainActivity : ListActivity() {
     override fun onResume() {
         super.onResume()
         window.addFlags(FLAG_KEYGUARD)
+        //stopService(Intent(this, SesameBeaconService::class.java))
     }
 }
