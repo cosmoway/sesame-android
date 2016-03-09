@@ -13,6 +13,7 @@ import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.os.AsyncTask
 import android.os.IBinder
+import android.os.PowerManager
 import android.os.RemoteException
 import android.preference.PreferenceManager
 import android.support.v4.app.NotificationManagerCompat
@@ -46,6 +47,8 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     private var discoveryStarted: Boolean = false
     // Flag of Unlock
     private var isUnlocked: Boolean = false
+    // Wakelock
+    private var mWakeLock: PowerManager.WakeLock? = null
 
 
     companion object {
@@ -126,8 +129,8 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                 notificationIntent, 0)
 
         builder.setContentTitle(result) // 1行目
-        if (result == "200 OK") {
-            builder.setContentText("正常に解錠されました。")
+        if (result.indexOf("200") != -1) {
+            builder.setContentText("解錠されました。")
         } else if (result == "Connection Error") {
             builder.setContentText("通信処理が正常に終了されませんでした。\n通信環境を御確認下さい。")
         } else if (result.indexOf("400") != -1) {
@@ -208,6 +211,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
 
     override fun onCreate() {
         super.onCreate()
+        Log.d(TAG_BEACON, "created")
         //BTMのインスタンス化
         mBeaconManager = BeaconManager.getInstanceForApplication(this)
 
@@ -237,6 +241,10 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         // BGでiBeacon領域を監視(モニタリング)するスキャン間隔を設定
         mBeaconManager?.setBackgroundBetweenScanPeriod(1000);
 
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyWakelockTag")
+        mWakeLock?.acquire()
+
         ensureSystemServices()
     }
 
@@ -248,6 +256,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     override fun onDestroy() {
         super.onDestroy()
         stopDiscovery()
+        mWakeLock?.release()
     }
 
     override fun onBind(intent: Intent?): IBinder? {
