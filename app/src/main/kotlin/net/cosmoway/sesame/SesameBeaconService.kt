@@ -59,6 +59,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         val MY_SERVICE_NAME = "sesame-dev"
         //val MY_SERVICE_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
         val MY_SERVICE_UUID = "dddddddddddddddddddddddddddddddd"
+        val UNKNOWN = -1.0
     }
 
     private fun toEncryptedHashValue(algorithmName: String, value: String): String {
@@ -105,8 +106,10 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                 if (result != null) {
                     Log.d("Log", result)
                     if (result == "200 OK") {
-                        val uri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                        val ringtone: Ringtone = RingtoneManager.getRingtone(applicationContext, uri)
+                        val uri: Uri = RingtoneManager
+                                .getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                        val ringtone: Ringtone = RingtoneManager
+                                .getRingtone(applicationContext, uri)
                         ringtone.play()
                         isUnlocked = true
                         try {
@@ -193,11 +196,13 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     }
 
     override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
-        Log.w(TAG_NSD, String.format("Failed to start discovery serviceType=%s, errorCode=%d", serviceType, errorCode))
+        Log.w(TAG_NSD, String.format("Failed to start discovery serviceType=%s, errorCode=%d",
+                serviceType, errorCode))
     }
 
     override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {
-        Log.w(TAG_NSD, String.format("Failed to stop discovery serviceType=%s, errorCode=%d", serviceType, errorCode))
+        Log.w(TAG_NSD, String.format("Failed to stop discovery serviceType=%s, errorCode=%d",
+                serviceType, errorCode))
     }
 
     private inner class MyResolveListener : NsdManager.ResolveListener {
@@ -210,7 +215,8 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         }
 
         override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
-            Log.w(TAG_NSD, String.format("Failed to resolve serviceInfo=%s, errorCode=%d", serviceInfo, errorCode))
+            Log.w(TAG_NSD, String.format("Failed to resolve serviceInfo=%s, errorCode=%d",
+                    serviceInfo, errorCode))
         }
     }
 
@@ -330,15 +336,31 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
             // 暗号化
             val safetyPassword1: String = toEncryptedHashValue("SHA-256", mId + "|"
                     + beacon.id2 + "|" + beacon.id3)
+
             // URL
             val url: String = "http:/$mHost:10080/?data=$safetyPassword1"
             Log.d(TAG_BEACON, url)
+
             // 距離種別
-            var proximity: String = "Unknown"
+            var proximity: String = "proximity"
+
+            if (beacon.distance == UNKNOWN) {
+                proximity = "Unknown"
+
+            } else if (beacon.distance <= 0.3) {
+                proximity = "Immediate"
+
+            } else if (beacon.distance <= 3.0) {
+                proximity = "Near"
+
+            } else if (beacon.distance > 3.0) {
+                proximity = "Far"
+
+            }
             getRequest(url) // 対象ビーコン領域進入したら
-            val list: Array<String> = arrayOf(beacon.id1.toString(), beacon.id2.toString(), beacon.id3.toString(),
-                    beacon.rssi.toString(), proximity, /*beacon.distance.toString(), beacon.txPower.toString(), url.toString()*/
-                    mId.toString())
+            val list: Array<String> = arrayOf(beacon.id1.toString(), beacon.id2.toString(),
+                    beacon.id3.toString(), beacon.rssi.toString(), proximity, mId.toString()
+                    /*,beacon.distance.toString(), beacon.txPower.toString(), url.toString()*/)
             sendBroadCast(list)
         }
     }
