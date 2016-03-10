@@ -1,10 +1,7 @@
 package net.cosmoway.sesame
 
 import android.Manifest
-import android.app.Activity
 import android.app.ListActivity
-import android.app.Notification
-import android.app.PendingIntent
 import android.bluetooth.BluetoothAdapter
 import android.content.Context
 import android.content.Intent
@@ -15,14 +12,10 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Message
 import android.support.v4.app.ActivityCompat
-import android.support.v4.app.NotificationManagerCompat
 import android.support.v4.content.ContextCompat
-import android.support.v7.app.NotificationCompat
-import android.util.Log
 import android.view.WindowManager
 import android.widget.ArrayAdapter
 import android.widget.ListView
-import android.widget.TextView
 
 
 class MainActivity : ListActivity() {

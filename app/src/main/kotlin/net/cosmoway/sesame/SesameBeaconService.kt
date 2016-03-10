@@ -21,13 +21,19 @@ import android.support.v7.app.NotificationCompat
 import android.util.Log
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.altbeacon.beacon.*
+import org.altbeacon.beacon.Beacon
+import org.altbeacon.beacon.BeaconConsumer
+import org.altbeacon.beacon.MonitorNotifier
+import org.altbeacon.beacon.RangeNotifier
+import org.altbeacon.beacon.BeaconManager
+import org.altbeacon.beacon.BeaconParser
+import org.altbeacon.beacon.Region
 import org.altbeacon.beacon.startup.BootstrapNotifier
 import org.altbeacon.beacon.startup.RegionBootstrap
 import java.io.IOException
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
-import java.util.*
+import java.util.UUID
 
 // BeaconServiceクラス
 class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeNotifier,
