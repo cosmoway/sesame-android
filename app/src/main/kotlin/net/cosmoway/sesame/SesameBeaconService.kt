@@ -379,7 +379,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                     beacon.id3.toString(), beacon.rssi.toString(), proximity, mId.toString()
                     /*,beacon.distance.toString(), beacon.txPower.toString(), url.toString()*/)
             sendBroadCastToMainActivity(list)
-            if (mHost != null && beacon.distance != -1.0) {
+            if (mHost != null && beacon.distance != -1.0 && beacon.id1.toString() == MY_SERVICE_UUID) {
                 getRequest(url) //ビーコン領域進入したら
             }
         }
