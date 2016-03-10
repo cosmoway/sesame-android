@@ -127,7 +127,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         val builder = NotificationCompat.Builder(applicationContext)
         builder.setSmallIcon(R.mipmap.ic_launcher)
 
-        // メッセージをクリックした時のインテントを作成する
+        // ノーティフィケションを生成した時のインテントを作成する
         val notificationIntent = Intent(this@SesameBeaconService, Notification::class.java)
         val contentIntent = PendingIntent.getActivity(this@SesameBeaconService, 0,
                 notificationIntent, 0)
@@ -141,6 +141,10 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
             builder.setContentText("予期せぬエラーが発生致しました。\n開発者に御問合せ下さい。")
         } else if (title.indexOf("403") != -1) {
             builder.setContentText("認証に失敗致しました。\nシステム管理者に登録を御確認下さい。")
+        } else if (title == "Enter Region") {
+            builder.setContentText("領域に入りました。")
+        } else if (title == "Exit Region") {
+            builder.setContentText("領域から出ました。")
         }
         builder.setContentIntent(contentIntent)
         builder.setTicker("Sesame") // 通知到着時に通知バーに表示(4.4まで)
@@ -293,6 +297,8 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
         startActivity(intent)
 
+        makeNotification("Enter Region")
+
         // レンジング開始
         if (isUnlocked == false) {
             try {
@@ -312,6 +318,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         // レンジング停止
         try {
             mBeaconManager?.stopRangingBeaconsInRegion(region)
+            makeNotification("Exit Region")
         } catch (e: RemoteException) {
             e.printStackTrace()
         }
@@ -333,12 +340,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
             Log.d(TAG_BEACON, url)
             // 距離種別
             var proximity: String = "Unknown"
-            if (mHost != null) {
-                getRequest(url) // 対象ビーコン領域進入したら
-            }
-            if (beacon.distance < 10.0) {
-
-            }
+            getRequest(url) // 対象ビーコン領域進入したら
             val list: Array<String> = arrayOf(beacon.id1.toString(), beacon.id2.toString(), beacon.id3.toString(),
                     beacon.rssi.toString(), proximity, /*beacon.distance.toString(), beacon.txPower.toString(), url.toString()*/
                     mId.toString())
