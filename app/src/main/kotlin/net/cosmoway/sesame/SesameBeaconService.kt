@@ -367,7 +367,6 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                 proximity = "Far"
 
             }
-            getRequest(url) // 対象ビーコン領域進入したら
             val list: Array<String> = arrayOf(beacon.id1.toString(), beacon.id2.toString(),
                     beacon.id3.toString(), beacon.rssi.toString(), proximity, mId.toString()
                     /*,beacon.distance.toString(), beacon.txPower.toString(), url.toString()*/)
