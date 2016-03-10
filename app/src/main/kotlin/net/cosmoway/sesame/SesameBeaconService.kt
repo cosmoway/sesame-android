@@ -31,7 +31,7 @@ import java.util.*
 
 // BeaconServiceクラス
 class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeNotifier,
-        MonitorNotifier, NsdManager.DiscoveryListener, NsdManager.ResolveListener {
+        MonitorNotifier, NsdManager.DiscoveryListener {
 
     // BGで監視するiBeacon領域
     private var mRegionBootstrap: RegionBootstrap? = null
