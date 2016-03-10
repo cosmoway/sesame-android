@@ -292,11 +292,6 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     override fun didEnterRegion(region: Region) {
         Log.d(TAG_BEACON, "Enter Region")
 
-        // アプリをFG起動させる
-        val intent = Intent(this, MainActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        startActivity(intent)
-
         makeNotification("Enter Region")
 
         // レンジング開始
