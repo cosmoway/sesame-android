@@ -5,6 +5,7 @@ import android.app.Activity
 import android.app.ListActivity
 import android.app.Notification
 import android.app.PendingIntent
+import android.bluetooth.BluetoothAdapter
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -59,28 +60,20 @@ class MainActivity : ListActivity() {
 
         requestLocationPermission()
 
-        /*val manager = getSystemService(Context.WIFI_SERVICE) as WifiManager
-        val info = manager.connectionInfo
-        val apInfo = arrayOfNulls<String>(4)
-        //SSIDを取得
-        apInfo[0] = String.format("SSID : %s", info.ssid)
-        // IPアドレスを取得
-        val ipAdr = info.ipAddress
-        apInfo[1] = String.format("IP Adrress : %02d.%02d.%02d.%02d",
-                ipAdr and 0xff, ipAdr shr 8 and 0xff, ipAdr shr 16 and 0xff, ipAdr shr 24 and 0xff)
-        // MACアドレスを取得
-        apInfo[2] = String.format("MAC Address : %s", info.macAddress)
-        // 受信信号強度&信号レベルを取得
-        val rssi = info.rssi
-        val level = WifiManager.calculateSignalLevel(rssi, 5)
-        apInfo[3] = String.format("RSSI : %d / Level : %d/4", rssi, level)
-
-        val adapter = ArrayAdapter<String>(this, android.R.layout.simple_list_item_2, apInfo)
-        listAdapter = adapter*/
-        // サービスの開始
         //permission check
+        val wifiManager: WifiManager = getSystemService(Context.WIFI_SERVICE) as WifiManager
+        if (wifiManager.isWifiEnabled == false) {
+            wifiManager.isWifiEnabled = true
+        }
+
+        val adapter: BluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        if (adapter.isEnabled == false) {
+            adapter.enable();
+        }
+
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) !=
                 PackageManager.PERMISSION_GRANTED) {
+            // サービスの開始
             startService(Intent(this, SesameBeaconService::class.java))
         }
 
@@ -101,5 +94,10 @@ class MainActivity : ListActivity() {
         super.onResume()
         window.addFlags(FLAG_KEYGUARD)
         //stopService(Intent(this, SesameBeaconService::class.java))
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(mReceiver);
     }
 }
