@@ -66,9 +66,9 @@ class MainActivity : ListActivity() {
             wifiManager.isWifiEnabled = true
         }
 
-        val adapter: BluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        val adapter: BluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
         if (adapter.isEnabled == false) {
-            adapter.enable();
+            adapter.enable()
         }
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) !=
@@ -98,6 +98,6 @@ class MainActivity : ListActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        unregisterReceiver(mReceiver);
+        unregisterReceiver(mReceiver)
     }
 }

@@ -38,10 +38,31 @@
         <service
             android:name=".SesameBeaconService"
             android:enabled="true" />
+
         <receiver android:name=".SesameBootReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
+        </receiver>
+        <receiver android:name=".SesameWidgetProvider">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/sesame_widget_provider" />
+        </receiver>
+        <receiver
+            android:name=".WidgetIntentReceiver"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="UPDATE_WIDGET" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/sesame_widget_provider" />
         </receiver>
     </application>
 

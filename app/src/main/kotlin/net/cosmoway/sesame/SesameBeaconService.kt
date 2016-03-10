@@ -31,7 +31,7 @@ import java.util.*
 
 // BeaconServiceクラス
 class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeNotifier,
-        MonitorNotifier, NsdManager.DiscoveryListener, NsdManager.ResolveListener {
+        MonitorNotifier, NsdManager.DiscoveryListener {
 
     // BGで監視するiBeacon領域
     private var mRegionBootstrap: RegionBootstrap? = null
@@ -46,7 +46,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     private var nsdManager: NsdManager? = null
     private var discoveryStarted: Boolean = false
     // Flag of Unlock
-    private var isUnlocked: Boolean = false
+    private var isUnlocked: Boolean? = null
     // Wakelock
     private var mWakeLock: PowerManager.WakeLock? = null
 
@@ -105,6 +105,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                         val uri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
                         val ringtone: Ringtone = RingtoneManager.getRingtone(applicationContext, uri)
                         ringtone.play()
+                        isUnlocked = true
                         try {
                             // レンジング停止
                             mBeaconManager?.stopRangingBeaconsInRegion(mRegion)
@@ -218,6 +219,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         Log.d(TAG_BEACON, "created")
         //BTMのインスタンス化
         mBeaconManager = BeaconManager.getInstanceForApplication(this)
+        isUnlocked = false
 
         //Parserの設定
         val IBEACON_FORMAT: String = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24"
@@ -243,7 +245,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         mRegion = Region(beaconId, null, null, null)
         mRegionBootstrap = RegionBootstrap(this, mRegion)
         // BGでiBeacon領域を監視(モニタリング)するスキャン間隔を設定
-        mBeaconManager?.setBackgroundBetweenScanPeriod(1000);
+        mBeaconManager?.setBackgroundBetweenScanPeriod(1000)
 
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyWakelockTag")
@@ -289,7 +291,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         startActivity(intent)
 
         // レンジング開始
-        if (!isUnlocked) {
+        if (isUnlocked == false) {
             try {
                 mBeaconManager?.startRangingBeaconsInRegion(region)
             } catch (e: RemoteException) {
