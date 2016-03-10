@@ -164,8 +164,10 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     }
 
     override fun onServiceFound(serviceInfo: NsdServiceInfo) {
-        Log.i(TAG_NSD, java.lang.String.format("Service found serviceInfo=%s", serviceInfo))
-        nsdManager?.resolveService(serviceInfo, this)
+        Log.i(TAG_NSD, String.format("Service found serviceInfo=%s", serviceInfo))
+        if (serviceInfo.serviceType.equals(SERVICE_TYPE)) {
+            nsdManager?.resolveService(serviceInfo, MyResolveListener())
+        }
     }
 
     override fun onDiscoveryStarted(serviceType: String) {
@@ -190,16 +192,18 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         Log.w(TAG_NSD, String.format("Failed to stop discovery serviceType=%s, errorCode=%d", serviceType, errorCode))
     }
 
-    override fun onServiceResolved(serviceInfo: NsdServiceInfo) {
-        Log.i(TAG_NSD, String.format("Service resolved serviceInfo=%s", serviceInfo.host))
-        if (serviceInfo.serviceName == MY_SERVICE_NAME) {
-            mHost = serviceInfo.host.toString()
-            stopDiscovery()
+    private inner class MyResolveListener : NsdManager.ResolveListener {
+        override fun onServiceResolved(serviceInfo: NsdServiceInfo) {
+            Log.i(TAG_NSD, String.format("Service resolved serviceInfo=%s", serviceInfo.host))
+            if (serviceInfo.serviceName == MY_SERVICE_NAME) {
+                mHost = serviceInfo.host.toString()
+                stopDiscovery()
+            }
         }
-    }
 
-    override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
-        Log.w(TAG_NSD, String.format("Failed to resolve serviceInfo=%s, errorCode=%d", serviceInfo, errorCode))
+        override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
+            Log.w(TAG_NSD, String.format("Failed to resolve serviceInfo=%s, errorCode=%d", serviceInfo, errorCode))
+        }
     }
 
     private fun sendBroadCast(state: Array<String>) {
