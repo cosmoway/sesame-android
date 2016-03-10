@@ -59,7 +59,6 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         val MY_SERVICE_NAME = "sesame-dev"
         //val MY_SERVICE_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
         val MY_SERVICE_UUID = "dddddddddddddddddddddddddddddddd"
-        val UNKNOWN = -1.0
     }
 
     private fun toEncryptedHashValue(algorithmName: String, value: String): String {
@@ -344,10 +343,10 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
             // 距離種別
             var proximity: String = "proximity"
 
-            if (beacon.distance == UNKNOWN) {
+            if (beacon.distance < 0.0) {
                 proximity = "Unknown"
 
-            } else if (beacon.distance <= 0.3) {
+            } else if (beacon.distance <= 0.5) {
                 proximity = "Immediate"
 
             } else if (beacon.distance <= 3.0) {
