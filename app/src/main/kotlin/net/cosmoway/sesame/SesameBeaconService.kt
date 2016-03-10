@@ -268,9 +268,9 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         //mRegion = Region(beaconId, null, null, null)
         mRegionBootstrap = RegionBootstrap(this, mRegion)
         // iBeacon領域を監視(モニタリング)するスキャン間隔を設定
-        mBeaconManager?.setBackgroundScanPeriod(1000)
+        //mBeaconManager?.setBackgroundScanPeriod(1000)
         mBeaconManager?.setBackgroundBetweenScanPeriod(1000)
-        mBeaconManager?.setForegroundScanPeriod(1000)
+        //mBeaconManager?.setForegroundScanPeriod(1000)
         mBeaconManager?.setForegroundBetweenScanPeriod(1000)
 
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
