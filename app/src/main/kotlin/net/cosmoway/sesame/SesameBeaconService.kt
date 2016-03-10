@@ -46,7 +46,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     private var nsdManager: NsdManager? = null
     private var discoveryStarted: Boolean = false
     // Flag of Unlock
-    private var isUnlocked: Boolean? = null
+    private var isUnlocked: Boolean = false
     // Wakelock
     private var mWakeLock: PowerManager.WakeLock? = null
 
@@ -55,10 +55,10 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         val TAG_BEACON = org.altbeacon.beacon.service.BeaconService::class.java.simpleName
         val TAG_NSD = "NSD"
         val SERVICE_TYPE = "_xdk-app-daemon._tcp."
-        //val MY_SERVICE_NAME = "sesame"
-        val MY_SERVICE_NAME = "sesame-dev"
-        //val MY_SERVICE_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-        val MY_SERVICE_UUID = "dddddddddddddddddddddddddddddddd"
+        val MY_SERVICE_NAME = "sesame"
+        //val MY_SERVICE_NAME = "sesame-dev"
+        val MY_SERVICE_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        //val MY_SERVICE_UUID = "dddddddddddddddddddddddddddddddd"
     }
 
     private fun toEncryptedHashValue(algorithmName: String, value: String): String {
@@ -176,7 +176,8 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     private inner class MyDiscoveryListener : NsdManager.DiscoveryListener {
         override fun onServiceFound(serviceInfo: NsdServiceInfo) {
             Log.i(TAG_NSD, String.format("Service found serviceInfo=%s", serviceInfo))
-            if (serviceInfo.serviceType.equals(SERVICE_TYPE)) {
+            if (serviceInfo.serviceType.equals(SERVICE_TYPE) &&
+                    serviceInfo.serviceName == MY_SERVICE_NAME) {
                 nsdManager?.resolveService(serviceInfo, MyResolveListener())
             }
         }
@@ -192,8 +193,10 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         }
 
         override fun onServiceLost(serviceInfo: NsdServiceInfo) {
+            discoveryStarted = false
             Log.i(TAG_NSD, String.format("Service lost serviceInfo=%s", serviceInfo))
         }
+
         override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
             Log.w(TAG_NSD, String.format("Failed to start discovery serviceType=%s, errorCode=%d", serviceType, errorCode))
         }
@@ -208,7 +211,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
             Log.i(TAG_NSD, String.format("Service resolved serviceInfo=%s", serviceInfo.host))
             if (serviceInfo.serviceName == MY_SERVICE_NAME) {
                 mHost = serviceInfo.host.toString()
-                stopDiscovery()
+                //stopDiscovery()
             }
         }
 
@@ -219,6 +222,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     }
 
     private fun sendBroadCastToMainActivity(state: Array<String>) {
+        Log.d(TAG_BEACON, "sendBroadCastToMainActivity")
         val broadcastIntent: Intent = Intent()
         broadcastIntent.putExtra("state", state)
         broadcastIntent.action = "UPDATE_ACTION"
@@ -226,6 +230,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     }
 
     private fun sendBroadCastToWidget(message: String) {
+        Log.d(TAG_BEACON, "created")
         val broadcastIntent: Intent = Intent()
         broadcastIntent.putExtra("message", message)
         broadcastIntent.action = "UPDATE_WIDGET"
@@ -276,12 +281,15 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d(TAG_BEACON, "startcommand")
+        discoveryStarted = false
         startDiscovery()
         return START_STICKY
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        Log.d(TAG_BEACON, "destroy")
         stopDiscovery()
         mWakeLock?.release()
     }
