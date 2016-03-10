@@ -122,7 +122,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         }.execute()
     }
 
-    private fun makeNotification(result: String) {
+    private fun makeNotification(title: String) {
 
         val builder = NotificationCompat.Builder(applicationContext)
         builder.setSmallIcon(R.mipmap.ic_launcher)
@@ -132,14 +132,14 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         val contentIntent = PendingIntent.getActivity(this@SesameBeaconService, 0,
                 notificationIntent, 0)
 
-        builder.setContentTitle(result) // 1行目
-        if (result.indexOf("200") != -1) {
+        builder.setContentTitle(title) // 1行目
+        if (title.indexOf("200") != -1) {
             builder.setContentText("解錠されました。")
-        } else if (result == "Connection Error") {
+        } else if (title == "Connection Error") {
             builder.setContentText("通信処理が正常に終了されませんでした。\n通信環境を御確認下さい。")
-        } else if (result.indexOf("400") != -1) {
+        } else if (title.indexOf("400") != -1) {
             builder.setContentText("予期せぬエラーが発生致しました。\n開発者に御問合せ下さい。")
-        } else if (result.indexOf("403") != -1) {
+        } else if (title.indexOf("403") != -1) {
             builder.setContentText("認証に失敗致しました。\nシステム管理者に登録を御確認下さい。")
         }
         builder.setContentIntent(contentIntent)
