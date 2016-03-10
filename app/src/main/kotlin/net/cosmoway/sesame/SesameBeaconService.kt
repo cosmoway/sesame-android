@@ -55,7 +55,10 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         val TAG_BEACON = org.altbeacon.beacon.service.BeaconService::class.java.simpleName
         val TAG_NSD = "NSD"
         val SERVICE_TYPE = "_xdk-app-daemon._tcp."
-        val MY_SERVICE_NAME = "sesame"
+        //val MY_SERVICE_NAME = "sesame"
+        val MY_SERVICE_NAME = "sesame-dev"
+        //val MY_SERVICE_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        val MY_SERVICE_UUID = "dddddddddddddddddddddddddddddddd"
     }
 
     private fun toEncryptedHashValue(algorithmName: String, value: String): String {
@@ -235,14 +238,14 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
             // 端末固有識別番号記憶
             sp.edit().putString("SaveString", mId).apply()
         }
-        //val identifier: Identifier = Identifier.parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+        val identifier: Identifier = Identifier.parse(MY_SERVICE_UUID)
         Log.d("id", mId)
 
         // Beacon名の作成
         val beaconId = this@SesameBeaconService.packageName
         // major, minorの指定はしない
-        //mRegion = Region(beaconId, identifier, null, null)
-        mRegion = Region(beaconId, null, null, null)
+        mRegion = Region(beaconId, identifier, null, null)
+        //mRegion = Region(beaconId, null, null, null)
         mRegionBootstrap = RegionBootstrap(this, mRegion)
         // BGでiBeacon領域を監視(モニタリング)するスキャン間隔を設定
         mBeaconManager?.setBackgroundBetweenScanPeriod(1000)
@@ -315,15 +318,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     }
 
     override fun didRangeBeaconsInRegion(beacons: MutableCollection<Beacon>?, region: Region?) {
-
-        // 検出したビーコンの情報を全部みる
-        //val lastDistance: Double = Double.MAX_VALUE
-        //var nearBeacon: Beacon? = null
-
         beacons?.forEach { beacon ->
-            /*if (lastDistance > beacon.distance) {
-                nearBeacon = beacon
-            }*/
 
             // ログの出力
             Log.d("Beacon", "UUID:" + beacon.id1 + ", major:" + beacon.id2 + ", minor:" + beacon.id3
@@ -341,7 +336,8 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                 getRequest(url) //ビーコン領域進入したら
             }
             val list: Array<String> = arrayOf(beacon.id1.toString(), beacon.id2.toString(), beacon.id3.toString(),
-                    beacon.distance.toString(), beacon.rssi.toString(), beacon.txPower.toString(), url.toString())
+                    beacon.rssi.toString(), beacon.distance.toString(), /*beacon.txPower.toString(), url.toString()*/
+                    mId.toString())
             sendBroadCast(list)
         }
     }
