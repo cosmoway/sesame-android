@@ -219,10 +219,17 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         }
     }
 
-    private fun sendBroadCast(state: Array<String>) {
+    private fun sendBroadCastToMainActivity(state: Array<String>) {
         val broadcastIntent: Intent = Intent()
         broadcastIntent.putExtra("state", state)
         broadcastIntent.action = "UPDATE_ACTION"
+        baseContext.sendBroadcast(broadcastIntent)
+    }
+
+    private fun sendBroadCastToWidget(message: String) {
+        val broadcastIntent: Intent = Intent()
+        broadcastIntent.putExtra("message", message)
+        broadcastIntent.action = "UPDATE_WIDGET"
         baseContext.sendBroadcast(broadcastIntent)
     }
 
@@ -256,8 +263,11 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         mRegion = Region(beaconId, identifier, null, null)
         //mRegion = Region(beaconId, null, null, null)
         mRegionBootstrap = RegionBootstrap(this, mRegion)
-        // BGでiBeacon領域を監視(モニタリング)するスキャン間隔を設定
+        // iBeacon領域を監視(モニタリング)するスキャン間隔を設定
+        mBeaconManager?.setBackgroundScanPeriod(1000)
         mBeaconManager?.setBackgroundBetweenScanPeriod(1000)
+        mBeaconManager?.setForegroundScanPeriod(1000)
+        mBeaconManager?.setForegroundBetweenScanPeriod(1000)
 
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyWakelockTag")
@@ -298,6 +308,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         Log.d(TAG_BEACON, "Enter Region")
 
         makeNotification("Enter Region")
+        sendBroadCastToWidget("Sesame\n領域に入りました。")
 
         // レンジング開始
         if (isUnlocked == false) {
@@ -319,6 +330,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         try {
             mBeaconManager?.stopRangingBeaconsInRegion(region)
             makeNotification("Exit Region")
+            sendBroadCastToWidget("Sesame\n領域から出ました。")
         } catch (e: RemoteException) {
             e.printStackTrace()
         }
@@ -360,7 +372,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
             val list: Array<String> = arrayOf(beacon.id1.toString(), beacon.id2.toString(),
                     beacon.id3.toString(), beacon.rssi.toString(), proximity, mId.toString()
                     /*,beacon.distance.toString(), beacon.txPower.toString(), url.toString()*/)
-            sendBroadCast(list)
+            sendBroadCastToMainActivity(list)
         }
     }
 

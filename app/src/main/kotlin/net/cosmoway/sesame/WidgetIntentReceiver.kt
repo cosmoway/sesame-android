@@ -6,19 +6,19 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Message
+import android.widget.RemoteViews
 
-/* Receiver内*/
-class SesameBroadcastReceiver : BroadcastReceiver() {
+class WidgetIntentReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
 
         val bundle = intent.extras
-        val state = bundle.getStringArray("state")
+        val message = bundle.getString("message")
 
         if (sHandler != null) {
             val msg = Message()
             val data = Bundle()
-            data.putStringArray("state", state)
+            data.putString("message", message)
             msg.data = data
             sHandler!!.sendMessage(msg)
         }
