@@ -336,18 +336,18 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                     + ", Distance:" + beacon.distance + "m"
                     + ", RSSI:" + beacon.rssi + ", txPower:" + beacon.txPower)
 
-
             //暗号化
             val safetyPassword1: String = toEncryptedHashValue("SHA-256", mId + "|"
                     + beacon.id2 + "|" + beacon.id3)
             //URL
             val url: String = "http:/$mHost:10080/?data=$safetyPassword1"
             Log.d(TAG_BEACON, url)
-            if (beacon.distance < 10.0) {
+            if (mHost != null && beacon.distance != -1.0) {
                 getRequest(url) //ビーコン領域進入したら
             }
-            val list: Array<String> = arrayOf(beacon.id1.toString(), beacon.id2.toString(), beacon.id3.toString(),
-                    beacon.distance.toString(), beacon.rssi.toString(), beacon.txPower.toString(), url.toString())
+            val list: Array<String> = arrayOf(beacon.id1.toString(), beacon.id2.toString(),
+                    beacon.id3.toString(), beacon.distance.toString(),
+                    beacon.rssi.toString(), beacon.txPower.toString(), url.toString())
             sendBroadCast(list)
         }
     }
