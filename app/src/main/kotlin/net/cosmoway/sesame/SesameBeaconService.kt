@@ -31,7 +31,7 @@ import java.util.*
 
 // BeaconServiceクラス
 class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeNotifier,
-        MonitorNotifier, NsdManager.DiscoveryListener {
+        MonitorNotifier {
 
     // BGで監視するiBeacon領域
     private var mRegionBootstrap: RegionBootstrap? = null
@@ -155,41 +155,43 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     }
 
     private fun startDiscovery() {
-        nsdManager?.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, this)
+        nsdManager?.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, MyDiscoveryListener())
     }
 
     private fun stopDiscovery() {
         if (discoveryStarted)
-            nsdManager?.stopServiceDiscovery(this)
+            nsdManager?.stopServiceDiscovery(MyDiscoveryListener())
     }
 
-    override fun onServiceFound(serviceInfo: NsdServiceInfo) {
-        Log.i(TAG_NSD, String.format("Service found serviceInfo=%s", serviceInfo))
-        if (serviceInfo.serviceType.equals(SERVICE_TYPE)) {
-            nsdManager?.resolveService(serviceInfo, MyResolveListener())
+    private inner class MyDiscoveryListener : NsdManager.DiscoveryListener {
+        override fun onServiceFound(serviceInfo: NsdServiceInfo) {
+            Log.i(TAG_NSD, String.format("Service found serviceInfo=%s", serviceInfo))
+            if (serviceInfo.serviceType.equals(SERVICE_TYPE)) {
+                nsdManager?.resolveService(serviceInfo, MyResolveListener())
+            }
         }
-    }
 
-    override fun onDiscoveryStarted(serviceType: String) {
-        discoveryStarted = true
-        Log.i(TAG_NSD, String.format("Discovery started serviceType=%s", serviceType))
-    }
+        override fun onDiscoveryStarted(serviceType: String) {
+            discoveryStarted = true
+            Log.i(TAG_NSD, String.format("Discovery started serviceType=%s", serviceType))
+        }
 
-    override fun onDiscoveryStopped(serviceType: String) {
-        discoveryStarted = false
-        Log.i(TAG_NSD, String.format("Discovery stopped serviceType=%s", serviceType))
-    }
+        override fun onDiscoveryStopped(serviceType: String) {
+            discoveryStarted = false
+            Log.i(TAG_NSD, String.format("Discovery stopped serviceType=%s", serviceType))
+        }
 
-    override fun onServiceLost(serviceInfo: NsdServiceInfo) {
-        Log.i(TAG_NSD, String.format("Service lost serviceInfo=%s", serviceInfo))
-    }
+        override fun onServiceLost(serviceInfo: NsdServiceInfo) {
+            Log.i(TAG_NSD, String.format("Service lost serviceInfo=%s", serviceInfo))
+        }
 
-    override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
-        Log.w(TAG_NSD, String.format("Failed to start discovery serviceType=%s, errorCode=%d", serviceType, errorCode))
-    }
+        override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
+            Log.w(TAG_NSD, String.format("Failed to start discovery serviceType=%s, errorCode=%d", serviceType, errorCode))
+        }
 
-    override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {
-        Log.w(TAG_NSD, String.format("Failed to stop discovery serviceType=%s, errorCode=%d", serviceType, errorCode))
+        override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {
+            Log.w(TAG_NSD, String.format("Failed to stop discovery serviceType=%s, errorCode=%d", serviceType, errorCode))
+        }
     }
 
     private inner class MyResolveListener : NsdManager.ResolveListener {
