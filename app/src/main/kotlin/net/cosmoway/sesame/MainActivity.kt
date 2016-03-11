@@ -63,15 +63,6 @@ class MainActivity : ListActivity() {
         if (adapter.isEnabled == false) {
             adapter.enable()
         }
-        //permission check
-        if (ActivityCompat.checkSelfPermission(this@MainActivity,
-                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this@MainActivity,
-                Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return
-        }
-
-        startService(Intent(this, SesameBeaconService::class.java))
 
         mReceiver = SesameBroadcastReceiver()
         mIntentFilter = IntentFilter()
@@ -89,6 +80,15 @@ class MainActivity : ListActivity() {
     override fun onResume() {
         super.onResume()
         window.addFlags(FLAG_KEYGUARD)
+        //permission check
+        if (ActivityCompat.checkSelfPermission(this@MainActivity,
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this@MainActivity,
+                        Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return
+        }
+
+        startService(Intent(this, SesameBeaconService::class.java))
         //stopService(Intent(this, SesameBeaconService::class.java))
     }
 
