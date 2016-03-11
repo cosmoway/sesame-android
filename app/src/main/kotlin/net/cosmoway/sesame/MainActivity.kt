@@ -64,12 +64,12 @@ class MainActivity : ListActivity() {
             adapter.enable()
         }
 
-        mReceiver = SesameBroadcastReceiver()
+        /*mReceiver = SesameBroadcastReceiver()
         mIntentFilter = IntentFilter()
         (mIntentFilter as IntentFilter).addAction("UPDATE_ACTION")
         registerReceiver(mReceiver, mIntentFilter)
 
-        (mReceiver as SesameBroadcastReceiver).registerHandler(updateHandler)
+        (mReceiver as SesameBroadcastReceiver).registerHandler(updateHandler)*/
     }
 
     override fun onStop() {
@@ -94,6 +94,6 @@ class MainActivity : ListActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        unregisterReceiver(mReceiver)
+        //unregisterReceiver(mReceiver)
     }
 }

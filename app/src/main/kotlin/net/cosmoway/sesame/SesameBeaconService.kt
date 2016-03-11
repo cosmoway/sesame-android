@@ -273,9 +273,9 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         //mBeaconManager?.setForegroundScanPeriod(1000)
         mBeaconManager?.setForegroundBetweenScanPeriod(1000)
 
-        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        /*val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyWakelockTag")
-        mWakeLock?.acquire()
+        mWakeLock?.acquire()*/
 
         ensureSystemServices()
     }
@@ -291,7 +291,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         super.onDestroy()
         Log.d(TAG_BEACON, "destroy")
         stopDiscovery()
-        mWakeLock?.release()
+        //mWakeLock?.release()
     }
 
     override fun onBind(intent: Intent?): IBinder? {
