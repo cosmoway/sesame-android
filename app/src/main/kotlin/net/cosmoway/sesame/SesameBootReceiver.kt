@@ -7,7 +7,7 @@ import android.content.Intent
 class SesameBootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
+        if (intent.action.equals(Intent.ACTION_BOOT_COMPLETED)) {
             context.startService(Intent(context, SesameBeaconService::class.java))
         }
     }
