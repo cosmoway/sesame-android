@@ -64,7 +64,7 @@ class MainActivity : ListActivity() {
             adapter.enable()
         }
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) !=
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
                 PackageManager.PERMISSION_GRANTED) {
             // サービスの開始
             startService(Intent(this, SesameBeaconService::class.java))
