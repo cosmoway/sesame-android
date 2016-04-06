@@ -14,7 +14,6 @@ import android.preference.PreferenceManager
 import android.support.v4.app.NotificationManagerCompat
 import android.support.v7.app.NotificationCompat
 import android.util.Log
-import org.altbeacon.beacon.Identifier
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.util.*
@@ -148,7 +147,6 @@ class SesameBeaconService : Service(), BluetoothAdapter.LeScanCallback {
             // 端末固有識別番号記憶
             sp.edit().putString("SaveString", mId).apply()
         }
-        Identifier.parse(SERVICE_UUID)
         Log.d("id", mId)
 
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -180,7 +178,7 @@ class SesameBeaconService : Service(), BluetoothAdapter.LeScanCallback {
      */
     private fun connect() {
         mHandler?.postDelayed({
-            mBluetoothAdapter?.stopLeScan(this@SesameBeaconService)
+            mBluetoothAdapter?.stopLeScan(this)
             if (BleStatus.SCANNING == mStatus) {
                 setStatus(BleStatus.SCAN_FAILED)
             }
