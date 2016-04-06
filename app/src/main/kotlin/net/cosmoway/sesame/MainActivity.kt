@@ -16,6 +16,7 @@ import android.support.v4.content.ContextCompat
 import android.view.WindowManager
 import android.widget.ArrayAdapter
 import android.widget.ListView
+import android.widget.Toast
 
 
 class MainActivity : ListActivity() {
@@ -53,15 +54,9 @@ class MainActivity : ListActivity() {
 
         requestLocationPermission()
 
-        //permission check
-        val wifiManager: WifiManager = getSystemService(Context.WIFI_SERVICE) as WifiManager
-        if (wifiManager.isWifiEnabled == false) {
-            wifiManager.isWifiEnabled = true
-        }
-
-        val adapter: BluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-        if (adapter.isEnabled == false) {
-            adapter.enable()
+        if (!packageManager.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+            Toast.makeText(this, "BLE未対応端末です", Toast.LENGTH_SHORT).show()
+            finish()
         }
 
         mReceiver = SesameBroadcastReceiver()
@@ -89,11 +84,11 @@ class MainActivity : ListActivity() {
         }
 
         startService(Intent(this, SesameBeaconService::class.java))
-        //stopService(Intent(this, SesameBeaconService::class.java))
     }
 
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(mReceiver)
+        stopService(Intent(this, SesameBeaconService::class.java))
     }
 }
