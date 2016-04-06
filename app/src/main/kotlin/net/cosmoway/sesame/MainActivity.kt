@@ -104,6 +104,6 @@ class MainActivity : ListActivity(), View.OnClickListener {
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(mReceiver)
-        stopService(Intent(this, SesameBeaconService::class.java))
+        // stopService(Intent(this, SesameBeaconService::class.java))
     }
 }
