@@ -8,6 +8,8 @@ import android.util.Log
 import org.altbeacon.beacon.*
 import org.altbeacon.beacon.startup.BootstrapNotifier
 import org.altbeacon.beacon.startup.RegionBootstrap
+import java.security.MessageDigest
+import java.security.NoSuchAlgorithmException
 import java.util.*
 
 // BeaconServiceクラス
@@ -23,6 +25,24 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
 
     companion object {
         val TAG = org.altbeacon.beacon.service.BeaconService::class.java.simpleName
+    }
+
+    private fun toEncryptedHashValue(algorithmName: String, value: String): String {
+        var md: MessageDigest? = null
+        var sb: StringBuilder? = null
+        try {
+            md = MessageDigest.getInstance(algorithmName)
+        } catch (e: NoSuchAlgorithmException) {
+            e.printStackTrace()
+        }
+
+        md!!.update(value.toByteArray())
+        sb = StringBuilder()
+        for (b in md.digest()) {
+            val hex = String.format("%02x", b)
+            sb.append(hex)
+        }
+        return sb.toString()
     }
 
     override fun onCreate() {
@@ -111,8 +131,10 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
             Log.d("Beacon", "UUID:" + beacon.id1 + ", major:" + beacon.id2
                     + ", minor:" + beacon.id3 + ", Distance:" + beacon.distance + "m"
                     + ",RSSI" + beacon.rssi)
+            //暗号化
+            val safetyPassword1: String = toEncryptedHashValue("SHA-256", mId + beacon.id2 + beacon.id3)
+            Log.d("id", safetyPassword1)
         }
-
     }
 
     // 領域に対する状態が変化
