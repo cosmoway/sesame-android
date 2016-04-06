@@ -1,0 +1,11 @@
+language: android
+before_script:
+  - chmod -x ./gradlew
+script:
+  - ./gradlew build
+after_success:
+  # Upload .apk file to deploygate
+  - curl -F "file=@build/apk/${APP_NAME}.apk" -F "token=${DEPLOYGATE_API_KEY}" https://deploygate.com/api/users/${DEPLOYGATE_USER_NAME}/apps
+branches:
+  only:
+    - change_for_ci
