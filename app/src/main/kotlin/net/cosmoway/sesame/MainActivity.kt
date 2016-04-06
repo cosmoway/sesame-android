@@ -2,28 +2,31 @@ package net.cosmoway.sesame
 
 import android.Manifest
 import android.app.ListActivity
-import android.bluetooth.BluetoothAdapter
-import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Message
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
+import android.view.View
 import android.view.WindowManager
 import android.widget.ArrayAdapter
+import android.widget.Button
 import android.widget.ListView
+import android.widget.Toast
 
 
-class MainActivity : ListActivity() {
+class MainActivity : ListActivity(), View.OnClickListener {
+    private var mReceiver: SesameBroadcastReceiver? = null
+    private var mIntentFilter: IntentFilter? = null
+    private var mStartButton: Button? = null
+    private var mStopButton: Button? = null
 
     //スリープモードからの復帰の為のフラグ定数
     private val FLAG_KEYGUARD = WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
-    private var mReceiver: SesameBroadcastReceiver? = null
-    private var mIntentFilter: IntentFilter? = null
+
 
     // サービスから値を受け取ったら動かしたい内容を書く
     private val updateHandler = object : Handler() {
@@ -53,15 +56,9 @@ class MainActivity : ListActivity() {
 
         requestLocationPermission()
 
-        //permission check
-        val wifiManager: WifiManager = getSystemService(Context.WIFI_SERVICE) as WifiManager
-        if (wifiManager.isWifiEnabled == false) {
-            wifiManager.isWifiEnabled = true
-        }
-
-        val adapter: BluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-        if (adapter.isEnabled == false) {
-            adapter.enable()
+        if (!packageManager.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+            Toast.makeText(this, "BLE未対応端末です", Toast.LENGTH_SHORT).show()
+            finish()
         }
 
         mReceiver = SesameBroadcastReceiver()
@@ -70,6 +67,19 @@ class MainActivity : ListActivity() {
         registerReceiver(mReceiver, mIntentFilter)
 
         (mReceiver as SesameBroadcastReceiver).registerHandler(updateHandler)
+
+        mStartButton = findViewById(R.id.btn_connect) as Button
+        mStopButton = findViewById(R.id.btn_disconnect) as Button
+        (mStartButton as Button).setOnClickListener(this)
+        (mStopButton as Button).setOnClickListener(this)
+    }
+
+    override fun onClick(v: View?) {
+        if (v == mStartButton) {
+            startService(Intent(this@MainActivity, SesameBeaconService::class.java))
+        } else if (v == mStopButton) {
+            stopService(Intent(this@MainActivity, SesameBeaconService::class.java))
+        }
     }
 
     override fun onStop() {
@@ -88,12 +98,12 @@ class MainActivity : ListActivity() {
             return
         }
 
-        startService(Intent(this, SesameBeaconService::class.java))
-        //stopService(Intent(this, SesameBeaconService::class.java))
+        //startService(Intent(this, SesameBeaconService::class.java))
     }
 
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(mReceiver)
+        // stopService(Intent(this, SesameBeaconService::class.java))
     }
 }

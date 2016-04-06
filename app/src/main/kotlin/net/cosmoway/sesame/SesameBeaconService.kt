@@ -3,64 +3,65 @@ package net.cosmoway.sesame
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
+import android.bluetooth.*
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
-import android.media.Ringtone
-import android.media.RingtoneManager
-import android.net.Uri
-import android.net.nsd.NsdManager
-import android.net.nsd.NsdServiceInfo
-import android.os.AsyncTask
+import android.os.Handler
 import android.os.IBinder
 import android.os.PowerManager
-import android.os.RemoteException
 import android.preference.PreferenceManager
 import android.support.v4.app.NotificationManagerCompat
 import android.support.v7.app.NotificationCompat
 import android.util.Log
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import org.altbeacon.beacon.*
-import org.altbeacon.beacon.startup.BootstrapNotifier
-import org.altbeacon.beacon.startup.RegionBootstrap
-import java.io.IOException
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
-import java.util.UUID
+import java.util.*
 
 // BeaconServiceクラス
-class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeNotifier,
-        MonitorNotifier {
+class SesameBeaconService : Service(), BluetoothAdapter.LeScanCallback {
 
-    // BGで監視するiBeacon領域
-    private var mRegionBootstrap: RegionBootstrap? = null
-    // iBeacon検知用のマネージャー
-    private var mBeaconManager: BeaconManager? = null
+    private var mStatus = BleStatus.DISCONNECTED
+    private var mHandler: Handler? = null
+    private var mBluetoothAdapter: BluetoothAdapter? = null
+    private var mBluetoothManager: BluetoothManager? = null
+    private var mBluetoothGatt: BluetoothGatt? = null
+
     // UUID設定用
     private var mId: String? = null
-    // iBeacon領域
-    private var mRegion: Region? = null
-    private var mHost: String? = null
-    // Nsd Manager
-    private var nsdManager: NsdManager? = null
-    private var discoveryStarted: Boolean = false
-    // Flag of Unlock
-    private var isUnlocked: Boolean = false
     // Wakelock
     private var mWakeLock: PowerManager.WakeLock? = null
 
 
     companion object {
-        val TAG_BEACON = org.altbeacon.beacon.service.BeaconService::class.java.simpleName
-        val TAG_NSD = "NSD"
-        val SERVICE_TYPE = "_xdk-app-daemon._tcp."
-        val MY_SERVICE_NAME = "sesame"
-        //val MY_SERVICE_NAME = "sesame-dev"
-        val MY_SERVICE_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-        //val MY_SERVICE_UUID = "dddddddddddddddddddddddddddddddd"
+        /**
+         * BLE 機器スキャンタイムアウト (ミリ秒)
+         */
+        private val SCAN_PERIOD: Long = 10000
+        /**
+         * 検索機器の機器名
+         */
+        private val DEVICE_NAME = "EdisonLocalName"
+        /**
+         * 対象のサービスUUID
+         */
+        private val SERVICE_UUID = "00002800-0000-1000-8000-00805f9b34fb"
+        /**
+         * 対象のキャラクタリスティックUUID
+         */
+        private val DEVICE_BUTTON_SENSOR_CHARACTERISTIC_UUID =
+        //        "00003333-0000-1000-8000-00805f9b34fb" // 読み取り用
+        //        "13333333-3333-3333-3333-333333330003" // 書き込み用
+        "13333333-3333-3333-3333-333333330001" // 通知用
+        /**
+         * キャラクタリスティック設定UUID
+         */
+        private val CLIENT_CHARACTERISTIC_CONFIG = "00002902-0000-1000-8000-00805f9b34fb"
+
+        private val TAG = "BLESample"
     }
 
+    // 暗号化メソッド
     private fun toEncryptedHashValue(algorithmName: String, value: String): String {
         var md: MessageDigest? = null
         try {
@@ -78,52 +79,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         return sb.toString()
     }
 
-    private fun getRequest(url: String) {
-        object : AsyncTask<Void?, Void?, String?>() {
-            override fun doInBackground(vararg params: Void?): String? {
-                var result: String
-                // リクエストオブジェクトを作って
-                val request: Request = Request.Builder().url(url).get().head().build()
-
-                // クライアントオブジェクトを作って
-                val client: OkHttpClient = OkHttpClient()
-
-                // リクエストして結果を受け取って
-                try {
-                    val response = client.newCall(request).execute()
-                    result = response.body().string()
-                } catch (e: IOException) {
-                    e.printStackTrace()
-                    result = "Connection Error"
-                }
-
-                // 返す
-                return result
-            }
-
-            override fun onPostExecute(result: String?) {
-                if (result != null) {
-                    Log.d("Log", result)
-                    if (result == "200 OK") {
-                        val uri: Uri = RingtoneManager
-                                .getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                        val ringtone: Ringtone = RingtoneManager
-                                .getRingtone(applicationContext, uri)
-                        ringtone.play()
-                        isUnlocked = true
-                        try {
-                            // レンジング停止
-                            mBeaconManager?.stopRangingBeaconsInRegion(mRegion)
-                        } catch (e: RemoteException) {
-                            e.printStackTrace()
-                        }
-                    }
-                    makeNotification(result)
-                }
-            }
-        }.execute()
-    }
-
+    // ノーティフィケーションを生成するメソッド。11020で仕様に応じて修正する。
     private fun makeNotification(title: String) {
 
         val builder = NotificationCompat.Builder(applicationContext)
@@ -157,72 +113,9 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
 
     }
 
-    fun ensureSystemServices() {
-        nsdManager = getSystemService(Context.NSD_SERVICE) as NsdManager
-        /*if (nsdManager == null) {
-            return
-        }*/
-    }
-
-    private fun startDiscovery() {
-        nsdManager?.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, MyDiscoveryListener())
-    }
-
-    private fun stopDiscovery() {
-        if (discoveryStarted)
-            nsdManager?.stopServiceDiscovery(MyDiscoveryListener())
-    }
-
-    private inner class MyDiscoveryListener : NsdManager.DiscoveryListener {
-        override fun onServiceFound(serviceInfo: NsdServiceInfo) {
-            Log.i(TAG_NSD, String.format("Service found serviceInfo=%s", serviceInfo))
-            if (serviceInfo.serviceType.equals(SERVICE_TYPE) &&
-                    serviceInfo.serviceName == MY_SERVICE_NAME) {
-                nsdManager?.resolveService(serviceInfo, MyResolveListener())
-            }
-        }
-
-        override fun onDiscoveryStarted(serviceType: String) {
-            discoveryStarted = true
-            Log.i(TAG_NSD, String.format("Discovery started serviceType=%s", serviceType))
-        }
-
-        override fun onDiscoveryStopped(serviceType: String) {
-            discoveryStarted = false
-            Log.i(TAG_NSD, String.format("Discovery stopped serviceType=%s", serviceType))
-        }
-
-        override fun onServiceLost(serviceInfo: NsdServiceInfo) {
-            discoveryStarted = false
-            Log.i(TAG_NSD, String.format("Service lost serviceInfo=%s", serviceInfo))
-        }
-
-        override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
-            Log.w(TAG_NSD, String.format("Failed to start discovery serviceType=%s, errorCode=%d", serviceType, errorCode))
-        }
-
-        override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {
-            Log.w(TAG_NSD, String.format("Failed to stop discovery serviceType=%s, errorCode=%d", serviceType, errorCode))
-        }
-    }
-
-    private inner class MyResolveListener : NsdManager.ResolveListener {
-        override fun onServiceResolved(serviceInfo: NsdServiceInfo) {
-            Log.i(TAG_NSD, String.format("Service resolved serviceInfo=%s", serviceInfo.host))
-            if (serviceInfo.serviceName == MY_SERVICE_NAME) {
-                mHost = serviceInfo.host.toString()
-                //stopDiscovery()
-            }
-        }
-
-        override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
-            Log.w(TAG_NSD, String.format("Failed to resolve serviceInfo=%s, errorCode=%d",
-                    serviceInfo, errorCode))
-        }
-    }
-
+    // 表示する値をアクティビティに投げる
     private fun sendBroadCastToMainActivity(state: Array<String>) {
-        Log.d(TAG_BEACON, "sendBroadCastToMainActivity")
+        Log.d(TAG, "sendBroadCastToMainActivity")
         val broadcastIntent: Intent = Intent()
         broadcastIntent.putExtra("state", state)
         broadcastIntent.action = "UPDATE_ACTION"
@@ -230,7 +123,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
     }
 
     private fun sendBroadCastToWidget(message: String) {
-        Log.d(TAG_BEACON, "created")
+        Log.d(TAG, "created")
         val broadcastIntent: Intent = Intent()
         broadcastIntent.putExtra("message", message)
         broadcastIntent.action = "UPDATE_WIDGET"
@@ -239,15 +132,11 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG_BEACON, "created")
-        //BTMのインスタンス化
-        mBeaconManager = BeaconManager.getInstanceForApplication(this)
-        isUnlocked = false
+        Log.d(TAG, "created")
+        mBluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        mBluetoothAdapter = mBluetoothManager!!.adapter
 
-        //Parserの設定
-        val IBEACON_FORMAT: String = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24"
-        mBeaconManager?.beaconParsers?.add(BeaconParser().setBeaconLayout(IBEACON_FORMAT))
-
+        // 端末固有識別番号の箱
         val sp: SharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
         // 端末固有識別番号読出
         mId = sp.getString("SaveString", null)
@@ -258,135 +147,170 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
             // 端末固有識別番号記憶
             sp.edit().putString("SaveString", mId).apply()
         }
-        val identifier: Identifier = Identifier.parse(MY_SERVICE_UUID)
         Log.d("id", mId)
-
-        // Beacon名の作成
-        val beaconId = this@SesameBeaconService.packageName
-        // major, minorの指定はしない
-        mRegion = Region(beaconId, identifier, null, null)
-        //mRegion = Region(beaconId, null, null, null)
-        mRegionBootstrap = RegionBootstrap(this, mRegion)
-        // iBeacon領域を監視(モニタリング)するスキャン間隔を設定
-        //mBeaconManager?.setBackgroundScanPeriod(1000)
-        mBeaconManager?.setBackgroundBetweenScanPeriod(1000)
-        //mBeaconManager?.setForegroundScanPeriod(1000)
-        mBeaconManager?.setForegroundBetweenScanPeriod(1000)
 
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyWakelockTag")
         mWakeLock?.acquire()
 
-        ensureSystemServices()
+        connect()
+        mHandler = Handler()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG_BEACON, "startcommand")
-        discoveryStarted = false
-        startDiscovery()
+        Log.d(TAG, "startCommand")
         return START_STICKY
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.d(TAG_BEACON, "destroy")
-        stopDiscovery()
+        Log.d(TAG, "destroy")
+
+        disconnect()
         mWakeLock?.release()
     }
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
     }
-
-    //Beaconサービスの接続と開始
-    override fun onBeaconServiceConnect() {
-        //領域監視の設定
-        mBeaconManager?.setMonitorNotifier(this)
-        try {
-            // ビーコン情報の監視を開始
-            mBeaconManager?.startMonitoringBeaconsInRegion(mRegion)
-        } catch (e: RemoteException) {
-            e.printStackTrace()
-        }
-    }
-
-    // 領域進入
-    override fun didEnterRegion(region: Region) {
-        Log.d(TAG_BEACON, "Enter Region")
-
-        makeNotification("Enter Region")
-        sendBroadCastToWidget("Sesame\n領域に入りました。")
-
-        // レンジング開始
-        if (isUnlocked == false) {
-            try {
-                mBeaconManager?.startRangingBeaconsInRegion(region)
-            } catch (e: RemoteException) {
-                e.printStackTrace()
+    /**
+     * BLE機器を検索する
+     */
+    private fun connect() {
+        mHandler?.postDelayed({
+            mBluetoothAdapter?.stopLeScan(this)
+            if (BleStatus.SCANNING == mStatus) {
+                setStatus(BleStatus.SCAN_FAILED)
             }
-            //Beacon情報の取得
-            mBeaconManager?.setRangeNotifier(this)
+        }, SCAN_PERIOD)
+        mBluetoothAdapter!!.stopLeScan(this)
+        mBluetoothAdapter!!.startLeScan(this)
+        setStatus(BleStatus.SCANNING)
+    }
+
+
+    /**
+     * BLE 機器との接続を解除する
+     */
+    private fun disconnect() {
+        if (mBluetoothGatt != null) {
+            mBluetoothGatt!!.close()
+            mBluetoothGatt = null
+            setStatus(BleStatus.CLOSED)
         }
     }
 
-    // 領域退出
-    override fun didExitRegion(region: Region) {
-        Log.d(TAG_BEACON, "Exit Region")
-
-        // レンジング停止
-        try {
-            mBeaconManager?.stopRangingBeaconsInRegion(region)
-            makeNotification("Exit Region")
-            sendBroadCastToWidget("Sesame\n領域から出ました。")
-        } catch (e: RemoteException) {
-            e.printStackTrace()
-        }
-    }
-
-    override fun didRangeBeaconsInRegion(beacons: MutableCollection<Beacon>?, region: Region?) {
-        beacons?.forEach { beacon ->
-
-            // ログの出力
-            Log.d("Beacon", "UUID:" + beacon.id1 + ", major:" + beacon.id2 + ", minor:" + beacon.id3
-                    + ", Distance:" + beacon.distance + "m"
-                    + ", RSSI:" + beacon.rssi + ", txPower:" + beacon.txPower)
-
-            // 暗号化
-            val safetyPassword1: String = toEncryptedHashValue("SHA-256", mId + "|"
-                    + beacon.id2 + "|" + beacon.id3)
-
-            // URL
-            val url: String = "http:/$mHost:10080/?data=$safetyPassword1"
-            Log.d(TAG_BEACON, url)
-
-            // 距離種別
-            var proximity: String = "proximity"
-
-            if (beacon.distance < 0.0) {
-                proximity = "Unknown"
-
-            } else if (beacon.distance <= 0.5) {
-                proximity = "Immediate"
-
-            } else if (beacon.distance <= 3.0) {
-                proximity = "Near"
-
-            } else if (beacon.distance > 3.0) {
-                proximity = "Far"
-
-            }
-            val list: Array<String> = arrayOf(beacon.id1.toString(), beacon.id2.toString(),
-                    beacon.id3.toString(), beacon.rssi.toString(), proximity, mId.toString()
-                    /*,beacon.distance.toString(), beacon.txPower.toString(), url.toString()*/)
+    override fun onLeScan(device: BluetoothDevice, rssi: Int, scanRecord: ByteArray) {
+        Log.d(TAG, "device found:" + device.name)
+        if (DEVICE_NAME == device.name) {
+            setStatus(BleStatus.DEVICE_FOUND)
+            // 省電力のためスキャンを停止する
+            mBluetoothAdapter!!.stopLeScan(this)
+            // GATT接続を試みる
+            mBluetoothGatt = device.connectGatt(this, false, mBluetoothGattCallback)
+            val msg = "name =" + device.name + ", bondState = " + device.bondState +
+                    ", address = " + device.address + ", type" + device.type +
+                    ", uuid = " + Arrays.toString(device.uuids)
+            Log.d("Scan", msg)
+            val list: Array<String> = arrayOf(device.name.toString(), device.bondState.toString(),
+                    device.address.toString(), device.type.toString(), Arrays.toString(device.uuids))
             sendBroadCastToMainActivity(list)
-            if (mHost != null && beacon.distance != -1.0 && beacon.id1.toString() == MY_SERVICE_UUID) {
-                getRequest(url) //ビーコン領域進入したら
-            }
         }
     }
 
-    // 領域に対する状態が変化
-    override fun didDetermineStateForRegion(i: Int, region: Region) {
-        Log.d(TAG_BEACON, "Determine State: " + i)
+    private val mBluetoothGattCallback = object : BluetoothGattCallback() {
+        override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
+            Log.d(TAG, "onConnectionStateChange:$status->$newState")
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                // GATTへ接続成功
+                // サービスを検索する
+                Log.d(TAG, "connection: success.")
+                gatt.discoverServices()
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                setStatus(BleStatus.DISCONNECTED)
+                // GATT通信から切断された
+                Log.d(TAG, "connection: disconnected.")
+                mBluetoothGatt = null
+            }
+        }
+
+        override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
+            Log.d(TAG, "onServicesDiscovered received:" + status)
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                val service = gatt.getService(UUID.fromString(SERVICE_UUID))
+                //val service = gatt.getService(null)
+                if (service == null) {
+                    // サービスが見つからなかった
+                    setStatus(BleStatus.SERVICE_NOT_FOUND)
+                } else {
+                    // サービスを見つけた
+                    setStatus(BleStatus.SERVICE_FOUND)
+                    val characteristic = service.getCharacteristic(UUID.fromString(
+                            DEVICE_BUTTON_SENSOR_CHARACTERISTIC_UUID))
+                    Log.d(TAG, "onServicesDiscovered characteristic:" + characteristic)
+
+                    if (characteristic == null) {
+                        // キャラクタリスティックが見つからなかった
+                        setStatus(BleStatus.CHARACTERISTIC_NOT_FOUND)
+                        Log.d(TAG, "onServicesDiscovered characteristic:null")
+                    } else {
+                        // キャラクタリスティックを見つけた
+                        Log.d(TAG, "onServicesDiscovered characteristic:" + characteristic.uuid)
+                        // 値書き込み
+                        /*val value: String = "安以宇衣於"
+                        characteristic.setValue(value.toString())
+                        Log.d(TAG, value.toString())
+                        gatt.writeCharacteristic(characteristic)*/
+
+                        // 値読み取り
+                        //gatt.readCharacteristic(characteristic)
+
+                        // 通知
+                        // Notification を要求する
+                        val registered = gatt.setCharacteristicNotification(characteristic, true)
+
+                        // Characteristic の Notification 有効化
+                        val descriptor: BluetoothGattDescriptor = characteristic.getDescriptor(
+                                UUID.fromString(CLIENT_CHARACTERISTIC_CONFIG))
+                        descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                        gatt.writeDescriptor(descriptor)
+
+                        if (registered) {
+                            // Characteristics通知設定完了
+                            Log.d(TAG, "Notification success")
+                            setStatus(BleStatus.NOTIFICATION_REGISTERED)
+                        } else {
+                            Log.d(TAG, "Notification failed")
+                            setStatus(BleStatus.NOTIFICATION_REGISTER_FAILED)
+                        }
+                    }
+                }
+            }
+        }
+
+        override fun onCharacteristicRead(gatt: BluetoothGatt,
+                                          characteristic: BluetoothGattCharacteristic,
+                                          status: Int) {
+            Log.d(TAG, "GATTStatus:" + status)
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                Log.d(TAG, "onCharacteristicRead: " + characteristic.getStringValue(0))
+            }
+        }
+
+        override fun onCharacteristicChanged(gatt: BluetoothGatt,
+                                             characteristic: BluetoothGattCharacteristic) {
+            Log.d(TAG, "onCharacteristicChanged")
+            Log.d(TAG, "onCharacteristicRead: " + characteristic.getStringValue(0))
+        }
+    }
+
+    private fun setStatus(status: BleStatus) {
+        mStatus = status
+    }
+
+    private enum class BleStatus {
+        DISCONNECTED, SCANNING, SCAN_FAILED, DEVICE_FOUND, SERVICE_NOT_FOUND, SERVICE_FOUND,
+        CHARACTERISTIC_NOT_FOUND, NOTIFICATION_REGISTERED, NOTIFICATION_REGISTER_FAILED, CLOSED;
+
     }
 }
