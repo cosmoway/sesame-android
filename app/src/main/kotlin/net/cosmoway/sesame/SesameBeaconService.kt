@@ -94,7 +94,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                     result = response.body().string()
                 } catch (e: IOException) {
                     e.printStackTrace()
-                    result = "Connection Error"
+                    return "Connection Error"
                 }
 
                 // 返す
@@ -315,7 +315,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         Log.d(TAG_BEACON, "Enter Region")
 
         makeNotification("Enter Region")
-        sendBroadCastToWidget("Sesame\n領域に入りました。")
+        //sendBroadCastToWidget("Sesame\n領域に入りました。")
 
         // レンジング開始
         if (isUnlocked == false) {
@@ -337,7 +337,7 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
         try {
             mBeaconManager?.stopRangingBeaconsInRegion(region)
             makeNotification("Exit Region")
-            sendBroadCastToWidget("Sesame\n領域から出ました。")
+            //sendBroadCastToWidget("Sesame\n領域から出ました。")
         } catch (e: RemoteException) {
             e.printStackTrace()
         }
@@ -375,10 +375,10 @@ class SesameBeaconService : Service(), BeaconConsumer, BootstrapNotifier, RangeN
                 proximity = "Far"
 
             }
-            val list: Array<String> = arrayOf(beacon.id1.toString(), beacon.id2.toString(),
+            /*val list: Array<String> = arrayOf(beacon.id1.toString(), beacon.id2.toString(),
                     beacon.id3.toString(), beacon.rssi.toString(), proximity, mId.toString()
-                    /*,beacon.distance.toString(), beacon.txPower.toString(), url.toString()*/)
-            sendBroadCastToMainActivity(list)
+                    /*,beacon.distance.toString(), beacon.txPower.toString(), url.toString()*/)*/
+            //sendBroadCastToMainActivity(list)
             if (mHost != null && beacon.distance != -1.0 && beacon.id1.toString() == MY_SERVICE_UUID) {
                 getRequest(url) //ビーコン領域進入したら
             }
